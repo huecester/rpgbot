@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env,
     error,
 };
@@ -9,6 +10,7 @@ type Error = Box<dyn error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 struct Data {}
 
+/// Queries a user's age.
 #[poise::command(slash_command)]
 async fn age(
     ctx: Context<'_>,
@@ -20,7 +22,15 @@ async fn age(
     Ok(())
 }
 
-#[poise::command(prefix_command, slash_command)]
+/// Displays a menu for registering slash commands.
+#[poise::command(
+    prefix_command,
+    slash_command,
+    owners_only,
+    hide_in_help,
+    guild_only,
+    reuse_response,
+)]
 async fn register(ctx: Context<'_>) -> Result<(), Error> {
     poise::builtins::register_application_commands_buttons(ctx).await?;
     Ok(())
@@ -30,9 +40,13 @@ async fn register(ctx: Context<'_>) -> Result<(), Error> {
 async fn main() {
     dotenv().unwrap();
 
+    let mut owners = HashSet::new();
+    owners.insert(serenity::UserId(297860975971926017));
+
     let framework = poise::Framework::build()
         .options(poise::FrameworkOptions{
             commands: vec![age(), register()],
+            owners,
             ..Default::default()
         })
         .token(env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found."))
