@@ -1,4 +1,5 @@
 mod commands;
+pub mod battle;
 pub mod types;
 
 use crate::{
@@ -10,16 +11,6 @@ use poise::{
 	BoxFuture,
 	serenity_prelude as serenity,
 };
-
-
-struct Player {
-	user: serenity::User,
-}
-
-struct Battle {
-	p1: Player,
-	p2: Player,
-}
 
 pub async fn start(token: impl Into<String>, owner_ids: Vec<impl Into<u64>>) -> Result<(), Error> {
     let mut owners = HashSet::new();
