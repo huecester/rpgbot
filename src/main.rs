@@ -20,7 +20,7 @@ async fn age(
     Ok(())
 }
 
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, slash_command)]
 async fn register(ctx: Context<'_>) -> Result<(), Error> {
     poise::builtins::register_application_commands_buttons(ctx).await?;
     Ok(())
@@ -36,7 +36,7 @@ async fn main() {
             ..Default::default()
         })
         .token(env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found."))
-        .intents(serenity::GatewayIntents::GUILDS)
+        .intents(serenity::GatewayIntents::non_privileged())
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(Data {}) }));
     
     framework.run().await.unwrap();
