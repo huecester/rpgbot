@@ -26,8 +26,7 @@ async fn duel(
                     b.custom_id("fight")
                         .label("⚔ Fight")
                         .style(serenity::ButtonStyle::Primary)
-                )
-                .create_button(|b|
+                ).create_button(|b|
                     b.custom_id("run")
                         .label("💨 Run")
                         .style(serenity::ButtonStyle::Danger)
