@@ -10,22 +10,45 @@ type Error = Box<dyn error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 struct Data {}
 
-/// Queries a user's age.
-#[poise::command(slash_command)]
-async fn age(
+/// Duel a user.
+#[poise::command(
+    slash_command,
+    guild_only,
+)]
+async fn duel(
     ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
+    #[description = "User to duel."] opponent: serenity::User,
 ) -> Result<(), Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created on {}.", u.name, u.created_at());
-    ctx.say(response).await?;
+    let mut reply = ctx.send(|m|
+        m.components(|c|
+            c.create_action_row(|r|
+                r.create_button(|b|
+                    b.custom_id("fight")
+                        .label("⚔ Fight")
+                        .style(serenity::ButtonStyle::Primary)
+                )
+                .create_button(|b|
+                    b.custom_id("run")
+                        .label("💨 Run")
+                        .style(serenity::ButtonStyle::Danger)
+                )
+            )
+        )
+    ).await?.message().await?;
+
+    let interaction = reply.
+        await_component_interaction(ctx.discord())
+        .author_id(opponent.id)
+        .await;
+    
+    reply.edit(ctx.discord(), |b| b.components(|b| b)).await?;
+
     Ok(())
 }
 
 /// Displays a menu for registering slash commands.
 #[poise::command(
     prefix_command,
-    slash_command,
     owners_only,
     hide_in_help,
     guild_only,
@@ -45,7 +68,7 @@ async fn main() {
 
     let framework = poise::Framework::build()
         .options(poise::FrameworkOptions{
-            commands: vec![age(), register()],
+            commands: vec![duel(), register()],
             owners,
             ..Default::default()
         })
