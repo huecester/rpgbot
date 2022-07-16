@@ -1,8 +1,5 @@
 use rpgbot::start;
-use std::{
-    env,
-    error::Error,
-};
+use std::{env, error::Error};
 use dotenv::dotenv;
 
 #[tokio::main]
