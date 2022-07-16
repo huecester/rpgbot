@@ -150,12 +150,10 @@ impl<'a> Battle<'a> {
 			.await_component_interaction(self.ctx.discord())
 			.author_id(self.p2.user.id)
 			.await;
-		self.reply
-			.as_mut()
-			.unwrap()
-			.edit(self.ctx.discord(), |m| m.components(|c| c)).await?;
 
 		if let Some(m) = interaction {
+			m.defer(self.ctx.discord()).await?;
+
 			match &*m.data.custom_id {
 				"fight" => Ok(true),
 				"run" => Ok(false),
@@ -180,9 +178,10 @@ impl<'a> Battle<'a> {
 				.await_component_interaction(self.ctx.discord())
 				.author_id(current_player.user.id)
 				.await;
-			reply.edit(self.ctx.discord(), |m| m.components(|c| c)).await?;
 			
 			if let Some(m) = interaction {
+				m.defer(self.ctx.discord()).await?;
+
 				let mut rand = rand::thread_rng();
 				match &*m.data.custom_id {
 					"attack" => {
