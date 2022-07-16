@@ -233,9 +233,10 @@ impl<'a> Battle<'a> {
 						} else {
 							e
 						}
-					})
+					}).components(|c| c)
 				} else {
 					m.embed(|e| base_embed(e).title("The battle was a tie..."))
+						.components(|c| c)
 				}
 			).await?;
 
