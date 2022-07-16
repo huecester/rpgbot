@@ -68,7 +68,7 @@ impl<'a> Battle<'a> {
 			match &*m.data.custom_id {
 				"fight" => Ok(true),
 				"run" => Ok(false),
-				other => Err(format!("Invalid button ID {}.", other).into()),
+				other => Err(format!("Invalid button ID {other}.").into()),
 			}
 		} else {
 			self.ctx.say("The invitation timed out.").await?;
