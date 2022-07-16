@@ -107,13 +107,6 @@ impl<'a> Battle<'a> {
 
 	pub async fn start(&mut self) -> Result<(), Error> {
 		if self.send_invite().await? {
-			self.reply
-				.as_mut()
-				.unwrap()
-				.edit(self.ctx.discord(), |m|
-					m.content("Ok")
-						.components(|c| c)
-				).await?;
 			self.battle_loop().await?;
 			Ok(())
 		} else {
