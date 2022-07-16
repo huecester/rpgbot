@@ -11,7 +11,7 @@ pub async fn duel(
     #[description = "User to duel."] opponent: serenity::User,
 ) -> Result<(), Error> {
 	let p1 = ctx.author().to_owned();
-	let battle = Battle::new(ctx, p1, opponent);
+	let mut battle = Battle::new(ctx, p1, opponent);
 	if let Err(e) = battle.start().await {
         eprintln!("{:?}", e);
         return Err("There was an error during the battle.".into());

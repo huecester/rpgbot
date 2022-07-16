@@ -1,6 +1,7 @@
 mod commands;
 pub mod battle;
 pub mod types;
+pub mod util;
 
 use crate::{
 	commands::{duel, register},
