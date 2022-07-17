@@ -16,6 +16,11 @@ pub async fn duel(
         return Ok(());
     }
 
+    if ctx.author() == &opponent {
+        ctx.send(|r| r.content("You cannot challenge yourself to a duel.").ephemeral(true)).await?;
+        return Ok(());
+    }
+
 	let p1 = ctx.author().to_owned();
 	let mut battle = Battle::new(ctx, p1, opponent);
 	if let Err(e) = battle.start().await {
