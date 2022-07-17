@@ -5,6 +5,7 @@ pub enum Entry {
 	Attack(String, String, usize),
 	Critical(String, String, usize),
 	Surrender(String),
+	Timeout(String),
 }
 
 impl Display for Entry {
@@ -13,6 +14,7 @@ impl Display for Entry {
 			Entry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
 			Entry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
 			Entry::Surrender(player) => format!("🏳 {player} surrendered."),
+			Entry::Timeout(player) => format!("🏳 {player} took too long."),
 		};
 
 		write!(f, "{}", entry)

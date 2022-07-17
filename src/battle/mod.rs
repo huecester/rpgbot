@@ -135,7 +135,12 @@ impl<'a> Battle<'a> {
 					other => return Err(format!("Unknown button ID {other}.").into()),
 				}
 			} else {
-				return Err("There was an error during the battle.".into());
+				self.log.add(Entry::Timeout(current_player.user().name.clone()));
+				if self.p1_turn {
+					self.p1.set_health(0);
+				} else {
+					self.p2.set_health(0);
+				}
 			}
 
 			self.p1_turn = !self.p1_turn;
