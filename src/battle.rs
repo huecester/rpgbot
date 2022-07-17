@@ -20,8 +20,9 @@ fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mut Cr
 	)
 }
 
-fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &Player, p2: &Player, p1_turn: bool, log: &Vec<String>) -> &'a mut CreateEmbed {
+fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &Player, p2: &Player, p1_turn: bool, log: &Log) -> &'a mut CreateEmbed {
 	let current_player = if p1_turn { p1 } else { p2 };
+	let log = log.get_last_entries(3).map_or_else(|| "---".to_string(), |log| log.iter().fold(String::new(), |acc, entry| format!("{}\n{}", acc, entry)));
 
 	let e = base_embed(e)
 		.title(format!("{}'s turn", current_player.user.name))
@@ -29,7 +30,7 @@ fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &Player, p2: &Player, p1_
 			(&p1.user.name, &p1, true),
 			(&p2.user.name, &p2, true),
 		])
-		.field("Log", log.last().unwrap_or(&"---".to_string()), false);
+		.field("Log", log, false);
 
 	if let Some(url) = current_player.user.avatar_url() {
 		e.thumbnail(url)
@@ -84,13 +85,42 @@ impl From<User> for Player {
 	}
 }
 
+struct Log(Vec<String>);
+
+impl Log {
+	fn new() -> Self {
+		Log(vec![])
+	}
+
+	fn add(&mut self, entry: impl Into<String>) {
+		self.0.push(entry.into());
+	}
+
+	fn get_last_entries(&self, n: usize) -> Option<Vec<&String>> {
+		if self.0.len() > 0 {
+			Some(self.0.iter().rev().take(n).collect())
+		} else {
+			None
+		}
+	}
+}
+
+impl Display for Log {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		const MAX_ENTRIES: usize = 30;
+
+		let log = self.0.iter().rev().take(MAX_ENTRIES).fold(String::new(), |acc, entry| format!("{}\n{}", acc, entry));
+		write!(f, "{}", log)
+	}
+}
+
 pub struct Battle<'a> {
 	ctx: Context<'a>,
 	reply: Option<Message>,
 	p1: Player,
 	p2: Player,
 	p1_turn: bool,
-	log: Vec<String>,
+	log: Log,
 }
 
 impl<'a> Battle<'a> {
@@ -101,7 +131,7 @@ impl<'a> Battle<'a> {
 			p1: p1.into(),
 			p2: p2.into(),
 			p1_turn: rand::random(),
-			log: vec![],
+			log: Log::new(),
 		}
 	}
 
@@ -185,9 +215,9 @@ impl<'a> Battle<'a> {
 
 						if critical {
 							damage = damage.checked_mul(2).unwrap_or(usize::MAX);
-							self.log.push(format!("💥 {} got a critical hit on {} for {damage} damage!", current_player.user.name, current_opponent.user.name));
+							self.log.add(format!("💥 {} got a critical hit on {} for {damage} damage!", current_player.user.name, current_opponent.user.name));
 						} else {
-							self.log.push(format!("⚔ {} attacked {} for {damage} damage.", current_player.user.name, current_opponent.user.name));
+							self.log.add(format!("⚔ {} attacked {} for {damage} damage.", current_player.user.name, current_opponent.user.name));
 						}
 
 						if self.p1_turn {
@@ -197,7 +227,7 @@ impl<'a> Battle<'a> {
 						}
 					},
 					"surrender" => {
-						self.log.push(format!("🏳 {} surrendered.", current_player.user.name));
+						self.log.add(format!("🏳 {} surrendered.", current_player.user.name));
 						self.p1.health = 0;
 					},	
 					other => return Err(format!("Unknown button ID {other}.").into()),
@@ -226,7 +256,8 @@ impl<'a> Battle<'a> {
 				if let Some(winner) = winner {
 					m.embed(|e| {
 						let e = base_embed(e)
-							.title(format!("🏆 {} won!", winner.user.name));
+							.title(format!("🏆 {} won!", winner.user.name))
+							.field("Log", &self.log, false);
 						
 						if let Some(url) = winner.user.avatar_url() {
 							e.thumbnail(url)
@@ -235,8 +266,10 @@ impl<'a> Battle<'a> {
 						}
 					}).components(|c| c)
 				} else {
-					m.embed(|e| base_embed(e).title("The battle was a tie..."))
-						.components(|c| c)
+					m.embed(|e| base_embed(e)
+						.title("The battle was a tie...")
+						.field("Log", &self.log, false)
+					).components(|c| c)
 				}
 			).await?;
 
