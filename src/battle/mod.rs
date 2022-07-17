@@ -50,8 +50,8 @@ pub struct Battle<'a, 'b> {
 impl<'a, 'b> Battle<'a, 'b> {
 	async fn new<T, U>(ctx: Context<'b>, message: Message, p1: T, p2: U) -> Arc<Battle<'a, 'b>>
 		where
-			T: Battler<'a, 'b> + 'a,
-			U: Battler<'a, 'b> + 'a,
+			T: 'a + Battler<'a, 'b>,
+			U: 'a + Battler<'a, 'b>,
 	{
 		let battle = {
 			let p1 = Arc::new(Mutex::new(p1));
