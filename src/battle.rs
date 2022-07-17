@@ -85,18 +85,37 @@ impl From<User> for Player {
 	}
 }
 
-struct Log(Vec<String>);
+#[non_exhaustive]
+enum LogEntry {
+	Attack(String, String, usize),
+	Critical(String, String, usize),
+	Surrender(String),
+}
+
+impl Display for LogEntry {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let entry = match self {
+			LogEntry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
+			LogEntry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
+			LogEntry::Surrender(player) => format!("🏳 {player} surrendered."),
+		};
+
+		write!(f, "{}", entry)
+	}
+}
+
+struct Log(Vec<LogEntry>);
 
 impl Log {
 	fn new() -> Self {
 		Log(vec![])
 	}
 
-	fn add(&mut self, entry: impl Into<String>) {
-		self.0.push(entry.into());
+	fn add(&mut self, entry: LogEntry) {
+		self.0.push(entry);
 	}
 
-	fn get_last_entries(&self, n: usize) -> Option<Vec<&String>> {
+	fn get_last_entries(&self, n: usize) -> Option<Vec<&LogEntry>> {
 		if self.0.len() > 0 {
 			Some(self.0.iter().rev().take(n).collect())
 		} else {
@@ -215,9 +234,9 @@ impl<'a> Battle<'a> {
 
 						if critical {
 							damage = damage.checked_mul(2).unwrap_or(usize::MAX);
-							self.log.add(format!("💥 {} got a critical hit on {} for {damage} damage!", current_player.user.name, current_opponent.user.name));
+							self.log.add(LogEntry::Critical(current_player.user.name.clone(), current_opponent.user.name.clone(), damage));
 						} else {
-							self.log.add(format!("⚔ {} attacked {} for {damage} damage.", current_player.user.name, current_opponent.user.name));
+							self.log.add(LogEntry::Attack(current_player.user.name.clone(), current_opponent.user.name.clone(), damage));
 						}
 
 						if self.p1_turn {
@@ -227,7 +246,7 @@ impl<'a> Battle<'a> {
 						}
 					},
 					"surrender" => {
-						self.log.add(format!("🏳 {} surrendered.", current_player.user.name));
+						self.log.add(LogEntry::Surrender(current_player.user.name.clone()));
 						self.p1.health = 0;
 					},	
 					other => return Err(format!("Unknown button ID {other}.").into()),
