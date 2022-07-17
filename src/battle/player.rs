@@ -12,7 +12,7 @@ impl Player {
 		&self.user
 	}
 
-	pub const fn health(&self) -> usize {
+	pub fn health(&self) -> usize {
 		self.health
 	}
 

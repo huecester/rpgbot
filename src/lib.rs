@@ -31,7 +31,7 @@ pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
         })
         .token(token)
         .intents(serenity::GatewayIntents::non_privileged())
-        .user_data_setup(move |_ctx, _ready, _framework| -> BoxFuture<'_, Result<Data, Error>> { Box::pin(async move { Ok(Data {}) }) });
+        .user_data_setup(move |_ctx, _ready, _framework| -> BoxFuture<'_, Result<Data, Error>> { Box::pin(async move { Ok(Data {..Default::default()}) }) });
 
     framework.run().await?;
 

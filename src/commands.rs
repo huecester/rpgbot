@@ -1,5 +1,5 @@
 use crate::{prelude::*, battle::Battle};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::User;
 
 /// Duel a user.
 #[poise::command(
@@ -9,21 +9,32 @@ use poise::serenity_prelude as serenity;
 )]
 pub async fn duel(
     ctx: Context<'_>,
-    #[description = "User to duel."] opponent: serenity::User,
+    #[description = "User to duel."] opponent: User,
 ) -> Result<(), Error> {
-    if opponent.bot {
-        ctx.send(|r| r.content("You cannot challenge bots to a duel.").ephemeral(true)).await?;
-        return Ok(());
-    }
-
-    if ctx.author() == &opponent {
-        ctx.send(|r| r.content("You cannot challenge yourself to a duel.").ephemeral(true)).await?;
-        return Ok(());
-    }
-
 	let p1 = ctx.author().clone();
+
+    if opponent.bot {
+        ctx.send(|m| m.content("You cannot challenge bots to a duel.").ephemeral(true)).await?;
+        return Ok(());
+    }
+
+    if p1 == opponent {
+        ctx.send(|m| m.content("You cannot challenge yourself to a duel.").ephemeral(true)).await?;
+        return Ok(());
+    }
+
+    let data = ctx.data();
+    if data.check_for_user_in_battle(&p1) {
+        ctx.send(|m| m.content("You cannot be in two battles at once.").ephemeral(true)).await?;
+        return Ok(());
+    }
+    if data.check_for_user_in_battle(&opponent) {
+        ctx.send(|m| m.content("That user is currently in a battle. Try again later.").ephemeral(true)).await?;
+        return Ok(());
+    }
+
 	let mut battle = Battle::new(ctx, p1, opponent);
-	if let Err(e) = battle.start().await {
+	if let Err(e) = battle.send_invite().await {
         eprintln!("{:?}", e);
         return Err("There was an error during the battle.".into());
     };

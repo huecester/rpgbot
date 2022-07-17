@@ -1,16 +1,18 @@
-mod util;
 mod log;
 mod player;
+mod util;
 
 use crate::{prelude::*, util::base_embed};
-use util::{create_battle_components, create_battle_embed, create_invite_action_row};
 use log::{Entry, Log};
 use player::Player;
+use util::{create_battle_components, create_battle_embed, create_invite_action_row};
 
 use poise::serenity_prelude::{Message, User};
 use rand::Rng;
+use uuid::Uuid;
 
 pub struct Battle<'a> {
+	id: Uuid,
 	ctx: Context<'a>,
 	reply: Option<Message>,
 	p1: Player,
@@ -21,7 +23,8 @@ pub struct Battle<'a> {
 
 impl<'a> Battle<'a> {
 	pub fn new(ctx: Context<'a>, p1: User, p2: User) -> Self {
-		Battle {
+		Self {
+			id: Uuid::new_v4(),
 			ctx,
 			reply: None,
 			p1: p1.into(),
@@ -31,19 +34,7 @@ impl<'a> Battle<'a> {
 		}
 	}
 
-	pub async fn start(&mut self) -> Result<(), Error> {
-		if self.send_invite().await? {
-			self.battle_loop().await?;
-			Ok(())
-		} else {
-			let reply = self.reply.as_mut().unwrap();
-			reply.edit(self.ctx.discord(), |m| m.components(|c| c)).await?;
-			reply.reply(self.ctx.discord(), format!("{} ran away.", self.p2.mention())).await?;
-			Ok(())
-		}
-	}
-
-	async fn send_invite(&mut self) -> Result<bool, Error> {
+	pub async fn send_invite(&mut self) -> Result<(), Error> {
 		self.reply = Some(self.ctx.send(|m|
 			m.embed(|e| {
 					let e = base_embed(e)
@@ -74,14 +65,25 @@ impl<'a> Battle<'a> {
 			m.defer(self.ctx.discord()).await?;
 
 			match &*m.data.custom_id {
-				"fight" => Ok(true),
-				"run" => Ok(false),
+				"fight" => self.start().await,
+				"run" => {
+					let reply = self.reply.as_mut().unwrap();
+					reply.edit(self.ctx.discord(), |m| m.components(|c| c)).await?;
+					reply.reply(self.ctx.discord(), format!("{} ran away.", self.p2.mention())).await?;
+					Ok(())
+				},
 				other => Err(format!("Unknown button ID {other}.").into()),
 			}
 		} else {
 			self.ctx.say("The invitation timed out.").await?;
-			Ok(false)
+			Ok(())
 		}
+	}
+
+	async fn start(&mut self) -> Result<(), Error> {
+		self.ctx.data().battles.write().unwrap().insert(self.id, vec![self.p1.user().id, self.p2.user().id]);
+		self.battle_loop().await?;
+		Ok(())
 	}
 
 	async fn battle_loop(&mut self) -> Result<(), Error> {
@@ -174,5 +176,11 @@ impl<'a> Battle<'a> {
 			).await?;
 
 		Ok(())
+	}
+}
+
+impl Drop for Battle<'_> {
+	fn drop(&mut self) {
+		self.ctx.data().battles.write().unwrap().remove(&self.id);
 	}
 }
