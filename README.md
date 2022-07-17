@@ -9,3 +9,4 @@ RPG game in a Discord bot. [Click here to invite.](https://discord.com/api/oauth
 - [ ] use traits in battles to allow other participant types (ex. AI)
 - [x] log entry enum
 - [ ] restrict users to one battle at a time
+- [ ] player battle action timeout
