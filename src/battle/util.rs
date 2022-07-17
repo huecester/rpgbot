@@ -28,8 +28,8 @@ pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &Player, p2: &Player,
 	let e = base_embed(e)
 		.title(format!("{}'s turn", current_player.user().name))
 		.fields(vec![
-			(&p1.user().name, &p1, true),
-			(&p2.user().name, &p2, true),
+			(&p1.user().name, &p1.stats(), true),
+			(&p2.user().name, &p2.stats(), true),
 		])
 		.field("Log", log, false);
 
