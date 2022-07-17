@@ -15,8 +15,8 @@ use poise::{
 
 pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
     where
-        T: Into<String> + Send,
-        U: Into<u64> + Send,
+        T: Into<String> + Send + Sync,
+        U: Into<u64> + Send + Sync,
 {
     let mut owners = HashSet::new();
 	for id in owner_ids {

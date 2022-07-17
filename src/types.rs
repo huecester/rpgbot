@@ -5,13 +5,13 @@ use uuid::Uuid;
 pub type Error = Box<dyn error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Data {
-	pub battles: RwLock<HashMap<Uuid, Vec<UserId>>>,
+	pub battles: RwLock<HashMap<Uuid, Vec<Option<UserId>>>>,
 }
 
 impl Data {
 	pub fn check_for_user_in_battle(&self, user: &User) -> bool {
-		self.battles.read().unwrap().values().flatten().any(|id| &user.id == id)
+		self.battles.read().unwrap().values().flatten().any(|id| id.as_ref() == Some(&user.id))
 	}
 }

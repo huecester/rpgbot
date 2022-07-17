@@ -1,4 +1,7 @@
-use crate::{prelude::*, battle::Battle};
+use crate::{
+    battle::Battle,
+    prelude::*,
+};
 use poise::serenity_prelude::User;
 
 /// Duel a user.
@@ -33,8 +36,7 @@ pub async fn duel(
         return Ok(());
     }
 
-	let mut battle = Battle::new(ctx, p1, opponent);
-	if let Err(e) = battle.send_invite().await {
+	if let Err(e) = Battle::send_invite(ctx, p1, opponent).await {
         eprintln!("{:?}", e);
         return Err("There was an error during the battle.".into());
     };

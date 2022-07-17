@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 #[non_exhaustive]
+#[derive(Clone)]
 pub enum Entry {
 	Attack(String, String, usize),
 	Critical(String, String, usize),
@@ -21,6 +22,7 @@ impl Display for Entry {
 	}
 }
 
+#[derive(Clone)]
 pub struct Log(Vec<Entry>);
 
 impl Log {
