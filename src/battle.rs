@@ -8,12 +8,14 @@ fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mut Cr
 	c.create_action_row(|r|
 		r.create_button(|b|
 			b.custom_id("fight")
-				.label("⚔ Fight")
+			 	.emoji('⚔')
+				.label("Fight")
 				.style(ButtonStyle::Primary)
 				.disabled(disabled)
 		).create_button(|b|
 			b.custom_id("run")
-				.label("💨 Run")
+			 	.emoji('💨')
+				.label("Run")
 				.style(ButtonStyle::Danger)
 				.disabled(disabled)
 		)
@@ -43,11 +45,13 @@ fn create_battle_components<'a>(c: &'a mut CreateComponents) -> &'a mut CreateCo
 	c.create_action_row(|r|
 		r.create_button(|b|
 			b.custom_id("attack")
-				.label("⚔ Attack")
+				.emoji('⚔')
+				.label("Attack")
 				.style(ButtonStyle::Primary)
 		).create_button(|b|
 			b.custom_id("surrender")
-				.label("🏳 Surrender")
+				.emoji('🏳')
+				.label("Surrender")
 				.style(ButtonStyle::Danger)
 		)
 	)
