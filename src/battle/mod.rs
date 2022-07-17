@@ -83,7 +83,7 @@ impl<'a> Battle<'a> {
 			Ok(false)
 		}
 	}
-	
+
 	async fn battle_loop(&mut self) -> Result<(), Error> {
 		while self.p1.health() > 0 && self.p2.health() > 0 {
 			let current_player = if self.p1_turn { &self.p1 } else { &self.p2 };
@@ -97,7 +97,7 @@ impl<'a> Battle<'a> {
 				.await_component_interaction(self.ctx.discord())
 				.author_id(current_player.user().id)
 				.await;
-			
+
 			if let Some(m) = interaction {
 				m.defer(self.ctx.discord()).await?;
 
@@ -129,7 +129,7 @@ impl<'a> Battle<'a> {
 						} else {
 							self.p2.set_health(0);
 						}
-					},	
+					},
 					other => return Err(format!("Unknown button ID {other}.").into()),
 				}
 			} else {
@@ -158,7 +158,7 @@ impl<'a> Battle<'a> {
 						let e = base_embed(e)
 							.title(format!("🏆 {} won!", winner.user().name))
 							.field("Log", &self.log, false);
-						
+
 						if let Some(url) = winner.user().avatar_url() {
 							e.thumbnail(url)
 						} else {
