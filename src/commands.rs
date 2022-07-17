@@ -1,4 +1,4 @@
-use crate::{types::*, battle::Battle};
+use crate::{prelude::*, battle::Battle};
 use poise::serenity_prelude as serenity;
 
 /// Duel a user.
@@ -21,7 +21,7 @@ pub async fn duel(
         return Ok(());
     }
 
-	let p1 = ctx.author().to_owned();
+	let p1 = ctx.author().clone();
 	let mut battle = Battle::new(ctx, p1, opponent);
 	if let Err(e) = battle.start().await {
         eprintln!("{:?}", e);

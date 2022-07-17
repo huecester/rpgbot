@@ -2,9 +2,9 @@ mod util;
 mod log;
 mod player;
 
-use crate::{types::*, util::base_embed};
-use util::*;
-use log::{Log, LogEntry};
+use crate::{prelude::*, util::base_embed};
+use util::{create_battle_components, create_battle_embed, create_invite_action_row};
+use log::{Entry, Log};
 use player::Player;
 
 use poise::serenity_prelude::{Message, User};
@@ -111,9 +111,9 @@ impl<'a> Battle<'a> {
 
 						if critical {
 							damage = damage.checked_mul(2).unwrap_or(usize::MAX);
-							self.log.add(LogEntry::Critical(current_player.user().name.clone(), current_opponent.user().name.clone(), damage));
+							self.log.add(Entry::Critical(current_player.user().name.clone(), current_opponent.user().name.clone(), damage));
 						} else {
-							self.log.add(LogEntry::Attack(current_player.user().name.clone(), current_opponent.user().name.clone(), damage));
+							self.log.add(Entry::Attack(current_player.user().name.clone(), current_opponent.user().name.clone(), damage));
 						}
 
 						if self.p1_turn {
@@ -123,7 +123,7 @@ impl<'a> Battle<'a> {
 						}
 					},
 					"surrender" => {
-						self.log.add(LogEntry::Surrender(current_player.user().name.clone()));
+						self.log.add(Entry::Surrender(current_player.user().name.clone()));
 						if self.p1_turn {
 							self.p1.set_health(0);
 						} else {

@@ -1,40 +1,40 @@
 use std::fmt::Display;
 
 #[non_exhaustive]
-pub enum LogEntry {
+pub enum Entry {
 	Attack(String, String, usize),
 	Critical(String, String, usize),
 	Surrender(String),
 }
 
-impl Display for LogEntry {
+impl Display for Entry {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let entry = match self {
-			LogEntry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
-			LogEntry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
-			LogEntry::Surrender(player) => format!("🏳 {player} surrendered."),
+			Entry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
+			Entry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
+			Entry::Surrender(player) => format!("🏳 {player} surrendered."),
 		};
 
 		write!(f, "{}", entry)
 	}
 }
 
-pub struct Log(Vec<LogEntry>);
+pub struct Log(Vec<Entry>);
 
 impl Log {
-	pub fn new() -> Self {
-		Log(vec![])
+	pub const fn new() -> Self {
+		Self(vec![])
 	}
 
-	pub fn add(&mut self, entry: LogEntry) {
+	pub fn add(&mut self, entry: Entry) {
 		self.0.push(entry);
 	}
 
-	pub fn get_last_entries(&self, n: usize) -> Option<Vec<&LogEntry>> {
-		if !self.0.is_empty() {
-			Some(self.0.iter().rev().take(n).collect())
-		} else {
+	pub fn get_last_entries(&self, n: usize) -> Option<Vec<&Entry>> {
+		if self.0.is_empty() {
 			None
+		} else {
+			Some(self.0.iter().rev().take(n).collect())
 		}
 	}
 }

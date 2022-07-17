@@ -1,19 +1,23 @@
 mod commands;
 pub mod battle;
+pub mod prelude;
 pub mod types;
 pub mod util;
 
-use crate::{
-	commands::{duel, register},
-	types::*,
-};
+use commands::{duel, register};
+use prelude::*;
+
 use std::collections::HashSet;
 use poise::{
 	BoxFuture,
 	serenity_prelude as serenity,
 };
 
-pub async fn start(token: impl Into<String>, owner_ids: Vec<impl Into<u64>>) -> Result<(), Error> {
+pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
+    where
+        T: Into<String> + Send,
+        U: Into<u64> + Send,
+{
     let mut owners = HashSet::new();
 	for id in owner_ids {
 		owners.insert(serenity::UserId(id.into()));

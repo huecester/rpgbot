@@ -12,7 +12,7 @@ impl Player {
 		&self.user
 	}
 
-	pub fn health(&self) -> usize {
+	pub const fn health(&self) -> usize {
 		self.health
 	}
 
@@ -37,7 +37,7 @@ impl Display for Player {
 
 impl From<User> for Player {
 	fn from(user: User) -> Self {
-		Player {
+		Self {
 			user,
 			health: 100,
 			max_health: 100,
