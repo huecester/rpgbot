@@ -28,7 +28,7 @@ pub async fn start(token: impl Into<String>, owner_ids: Vec<impl Into<u64>>) -> 
         .token(token)
         .intents(serenity::GatewayIntents::non_privileged())
         .user_data_setup(move |_ctx, _ready, _framework| -> BoxFuture<'_, Result<Data, Error>> { Box::pin(async move { Ok(Data {}) }) });
-    
+
     framework.run().await?;
 
 	Ok(())
