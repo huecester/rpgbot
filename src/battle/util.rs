@@ -27,7 +27,7 @@ pub fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mu
 	)
 }
 
-pub fn create_battle_embed<'a, 'b>(e: &'a mut CreateEmbed, p1: BattlerInfo, p2: BattlerInfo, p1_turn: bool, log: Log) -> &'a mut CreateEmbed {
+pub fn create_battle_embed(e: &mut CreateEmbed, p1: BattlerInfo, p2: BattlerInfo, p1_turn: bool, log: Log) -> &mut CreateEmbed {
 	let (current_name, current_icon) = {
 		if p1_turn {
 			(&p1.name, p1.icon)
