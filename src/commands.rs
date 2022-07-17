@@ -5,11 +5,17 @@ use poise::serenity_prelude as serenity;
 #[poise::command(
     slash_command,
     guild_only,
+    user_cooldown = 10,
 )]
 pub async fn duel(
     ctx: Context<'_>,
     #[description = "User to duel."] opponent: serenity::User,
 ) -> Result<(), Error> {
+    if opponent.bot {
+        ctx.send(|r| r.content("You cannot challenge bots to a duel.").ephemeral(true)).await?;
+        return Ok(());
+    }
+
 	let p1 = ctx.author().to_owned();
 	let mut battle = Battle::new(ctx, p1, opponent);
 	if let Err(e) = battle.start().await {
