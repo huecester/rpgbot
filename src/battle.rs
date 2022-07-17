@@ -247,7 +247,11 @@ impl<'a> Battle<'a> {
 					},
 					"surrender" => {
 						self.log.add(LogEntry::Surrender(current_player.user.name.clone()));
-						self.p1.health = 0;
+						if self.p1_turn {
+							self.p1.health = 0;
+						} else {
+							self.p2.health = 0;
+						}
 					},	
 					other => return Err(format!("Unknown button ID {other}.").into()),
 				}
