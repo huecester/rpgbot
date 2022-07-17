@@ -31,7 +31,7 @@ impl Log {
 	}
 
 	pub fn get_last_entries(&self, n: usize) -> Option<Vec<&LogEntry>> {
-		if self.0.len() > 0 {
+		if !self.0.is_empty() {
 			Some(self.0.iter().rev().take(n).collect())
 		} else {
 			None

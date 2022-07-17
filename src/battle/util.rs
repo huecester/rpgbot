@@ -40,7 +40,7 @@ pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &Player, p2: &Player,
 	}
 }
 
-pub fn create_battle_components<'a>(c: &'a mut CreateComponents) -> &'a mut CreateComponents {
+pub fn create_battle_components(c: &mut CreateComponents) -> &mut CreateComponents {
 	c.create_action_row(|r|
 		r.create_button(|b|
 			b.custom_id("attack")
