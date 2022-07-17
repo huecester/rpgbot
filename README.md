@@ -5,7 +5,6 @@ RPG game in a Discord bot. [Click here to invite.](https://discord.com/api/oauth
 - [ ] healthbar with custom emojis
 - [x] battle log
 - [x] fix "This interaction failed"
-- [ ] move interaction handling to Player
 - [ ] use traits in battles to allow other participant types (ex. AI)
 - [x] log entry enum
 - [x] restrict users to one battle at a time
