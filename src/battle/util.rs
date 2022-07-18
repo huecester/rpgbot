@@ -1,12 +1,24 @@
 use crate::util::base_embed;
 use super::log::Log;
 
+use std::fmt::Display;
 use poise::serenity_prelude::{ButtonStyle, CreateComponents, CreateEmbed};
 
 pub struct BattlerInfo {
 	pub name: String,
 	pub icon: Option<String>,
-	pub stats: String,
+	pub stats: BattlerStats,
+}
+
+pub struct BattlerStats {
+	pub health: usize,
+	pub max_health: usize,
+}
+
+impl Display for BattlerStats {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "❤ {}/{}", self.health, self.max_health)
+	}
 }
 
 pub fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mut CreateComponents {

@@ -85,8 +85,8 @@ impl<'a, 'b> Battle<'a, 'b> {
 					.title("⚔ Duel Invitation")
 					.description(format!("{} challenged {} to a duel!", &p1.mention(), &p2.mention()))
 					.fields(vec![
-						(p1.name(), p1.stats(), true),
-						(p2.name(), p2.stats(), true),
+						(p1.name(), p1.info().stats, true),
+						(p2.name(), p2.info().stats, true),
 					]);
 
 				if let Some(url) = p1.user().avatar_url() {

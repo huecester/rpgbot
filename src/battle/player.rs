@@ -1,7 +1,12 @@
 use std::sync::Weak;
 
 use crate::prelude::*;
-use super::{Battle, Battler, log::Entry, util::BattlerInfo};
+use super::{
+	Battle,
+	Battler,
+	log::Entry,
+	util::{BattlerInfo, BattlerStats}
+};
 
 use async_trait::async_trait;
 use poise::serenity_prelude::{User, UserId};
@@ -38,10 +43,6 @@ impl<'a, 'b> Player<'a, 'b> {
 
 	pub fn mention(&self) -> String {
 		format!("<@{}>", self.user.id)
-	}
-
-	pub fn stats(&self) -> String {
-		format!("❤ {}/{}", self.health(), self.max_health())
 	}
 }
 
@@ -137,7 +138,10 @@ impl<'a, 'b> Battler<'a, 'b> for Player<'a, 'b> {
 		BattlerInfo {
 			name: self.name().clone(),
 			icon: self.icon(),
-			stats: self.stats(),
+			stats: BattlerStats {
+				health: self.health(),
+				max_health: self.max_health(),
+			},
 		}
 	}
 }
