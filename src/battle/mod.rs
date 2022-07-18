@@ -136,15 +136,15 @@ impl<'a> Battle<'a> {
 
 			let p1_info = self.p1.lock().await.info();
 			let p2_info = self.p2.lock().await.info();
-			let log = self.log.lock().await.clone();
+			let log = self.log.lock().await;
 
 			self.message.lock().await.edit(self.ctx.discord(), |m|
-				m.embed(|e| create_battle_embed(e, p1_info, p2_info, p1_turn, log))
+				m.embed(|e| create_battle_embed(e, p1_info, p2_info, p1_turn, &log))
 					.components(|c| create_battle_components(c))
 			).await?;
 
 			if p1_turn {
-				self.p1.lock().await.act().await?
+				self.p1.lock().await.act().await?;
 			} else {
 				self.p2.lock().await.act().await?;
 			};
