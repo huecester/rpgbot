@@ -14,18 +14,18 @@ use rand::Rng;
 use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct Player<'a, 'b> {
+pub struct Player<'a> {
 	user: User,
 	id: Uuid,
 	is_p1: bool,
-	ctx: Context<'b>,
-	battle: Option<Weak<Battle<'a, 'b>>>,
+	ctx: Context<'a>,
+	battle: Option<Weak<Battle<'a>>>,
 	health: usize,
 	max_health: usize,
 }
 
-impl<'a, 'b> Player<'a, 'b> {
-	pub fn new(user: User, ctx: Context<'b>, is_p1: bool) -> Self {
+impl<'a> Player<'a> {
+	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
 		Self {
 			user,
 			id: Uuid::new_v4(),
@@ -47,8 +47,8 @@ impl<'a, 'b> Player<'a, 'b> {
 }
 
 #[async_trait]
-impl<'a, 'b> Battler<'a, 'b> for Player<'a, 'b> {
-	fn set_battle(&mut self, battle: Weak<Battle<'a, 'b>>) {
+impl<'a> Battler<'a> for Player<'a> {
+	fn set_battle(&mut self, battle: Weak<Battle<'a>>) {
 		self.battle = Some(battle);
 	}
 

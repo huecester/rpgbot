@@ -17,8 +17,8 @@ use poise::serenity_prelude::{Message, Mutex, User, UserId};
 use uuid::Uuid;
 
 #[async_trait]
-pub trait Battler<'a, 'b>: Send + Sync {
-	fn set_battle(&mut self, battle: Weak<Battle<'a, 'b>>);
+pub trait Battler<'a>: Send + Sync {
+	fn set_battle(&mut self, battle: Weak<Battle<'a>>);
 
 	fn user_id(&self) -> Option<UserId> { None }
 	fn id(&self) -> &Uuid;
@@ -37,21 +37,21 @@ pub trait Battler<'a, 'b>: Send + Sync {
 }
 
 type SharedBattler<T> = Arc<Mutex<T>>;
-pub struct Battle<'a, 'b> {
+pub struct Battle<'a> {
 	id: Uuid,
-	ctx: Context<'b>,
+	ctx: Context<'a>,
 	message: Mutex<Message>,
-	p1: SharedBattler<dyn Battler<'a, 'b> + 'a>,
-	p2: SharedBattler<dyn Battler<'a, 'b> + 'a>,
+	p1: SharedBattler<dyn 'a + Battler<'a>>,
+	p2: SharedBattler<dyn 'a + Battler<'a>>,
 	p1_turn: AtomicBool,
 	log: Mutex<Log>,
 }
 
-impl<'a, 'b> Battle<'a, 'b> {
-	async fn new<T, U>(ctx: Context<'b>, message: Message, p1: T, p2: U) -> Arc<Battle<'a, 'b>>
+impl<'a> Battle<'a> {
+	async fn new<T, U>(ctx: Context<'a>, message: Message, p1: T, p2: U) -> Arc<Battle<'a>>
 		where
-			T: 'a + Battler<'a, 'b>,
-			U: 'a + Battler<'a, 'b>,
+			T: 'a + Battler<'a>,
+			U: 'a + Battler<'a>,
 	{
 		let battle = {
 			let p1 = Arc::new(Mutex::new(p1));
@@ -207,7 +207,7 @@ impl<'a, 'b> Battle<'a, 'b> {
 	}
 }
 
-impl<'a, 'b> Drop for Battle<'a, 'b> {
+impl<'a> Drop for Battle<'a> {
 	fn drop(&mut self) {
 		self.ctx.data().battles.write().unwrap().remove(&self.id);
 	}
