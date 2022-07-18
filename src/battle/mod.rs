@@ -107,6 +107,11 @@ impl<'a> Battle<'a> {
 
 			match &*m.data.custom_id {
 				"fight" => {
+					if ctx.data().check_for_user_in_battle(p2.user()) {
+						message.edit(ctx.discord(), |m| m.components(|c| c)).await?;
+						ctx.send(|c| c.content("You cannot be in two battles at once.").ephemeral(true)).await?;
+						return Ok(());
+					}
 					let battle = Battle::new(ctx, message, p1, p2).await;
 					battle.start().await
 				}
