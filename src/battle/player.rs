@@ -5,7 +5,7 @@ use super::{
 	Battle,
 	Battler,
 	log::Entry,
-	util::{BattlerInfo, BattlerStats}
+	util::BattlerInfo,
 };
 
 use async_trait::async_trait;
@@ -136,12 +136,11 @@ impl<'a> Battler<'a> for Player<'a> {
 
 	fn info(&self) -> BattlerInfo {
 		BattlerInfo {
+			ctx: self.ctx,
 			name: self.name().clone(),
 			icon: self.icon(),
-			stats: BattlerStats {
-				health: self.health(),
-				max_health: self.max_health(),
-			},
+			health: self.health(),
+			max_health: self.max_health(),
 		}
 	}
 }

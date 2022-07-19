@@ -79,22 +79,14 @@ impl<'a> Battle<'a> {
 		let p1 = Player::new(u1, ctx, true);
 		let p2 = Player::new(u2, ctx, false);
 
-		let mut message = ctx.send(|m|
-			m.embed(|e| {
-				let e = base_embed(e)
-					.title("⚔ Duel Invitation")
-					.description(format!("{} challenged {} to a duel!", &p1.mention(), &p2.mention()))
-					.fields(vec![
-						(p1.name(), p1.info().stats, true),
-						(p2.name(), p2.info().stats, true),
-					]);
+		let p1_display = p1.info().display().await;
+		let p2_display = p2.info().display().await;
 
-				if let Some(url) = p1.user().avatar_url() {
-					e.thumbnail(url)
-				} else {
-					e
-				}
-			}).components(|c| create_invite_action_row(c, false))
+		let mut message = ctx.send(|m|
+			m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, true, &Log::new())
+				.title("⚔ Duel Invitation")
+				.description(format!("{} challenged {} to a duel!", &p1.mention(), &p2.mention()))
+			).components(|c| create_invite_action_row(c, false))
 		).await?.message().await?;
 
 		let interaction = message
@@ -139,14 +131,19 @@ impl<'a> Battle<'a> {
 		while self.p1.lock().await.health() > 0 && self.p2.lock().await.health() > 0 {
 			let p1_turn = self.p1_turn.load(Ordering::Relaxed);
 
-			let p1_info = self.p1.lock().await.info();
-			let p2_info = self.p2.lock().await.info();
-			let log = self.log.lock().await;
+			{
+				let p1 = self.p1.lock().await;
+				let p2 = self.p2.lock().await;
 
-			self.message.lock().await.edit(self.ctx.discord(), |m|
-				m.embed(|e| create_battle_embed(e, p1_info, p2_info, p1_turn, &log))
-					.components(|c| create_battle_components(c))
-			).await?;
+				let p1_display = p1.info().display().await;
+				let p2_display = p2.info().display().await;
+				let log = self.log.lock().await;
+
+				self.message.lock().await.edit(self.ctx.discord(), |m|
+					m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, p1_turn, &log))
+						.components(|c| create_battle_components(c))
+				).await?;
+			}
 
 			if p1_turn {
 				self.p1.lock().await.act().await?;
@@ -212,7 +209,7 @@ impl<'a> Battle<'a> {
 	}
 }
 
-impl<'a> Drop for Battle<'a> {
+impl Drop for Battle<'_> {
 	fn drop(&mut self) {
 		self.ctx.data().battles.write().unwrap().remove(&self.id);
 	}

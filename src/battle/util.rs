@@ -1,25 +1,84 @@
-use crate::util::base_embed;
+use crate::{
+	prelude::*,
+	util::base_embed,
+};
 use super::log::Log;
 
-use std::fmt::Display;
-use poise::serenity_prelude::{ButtonStyle, CreateComponents, CreateEmbed};
+use poise::serenity_prelude::{ButtonStyle, CreateComponents, CreateEmbed, Emoji, Guild, read_image};
 
-pub struct BattlerInfo {
-	pub name: String,
-	pub icon: Option<String>,
-	pub stats: BattlerStats,
+async fn get_or_create_emoji(emojis: &Vec<Emoji>, name: &str, guild: &Guild, ctx: Context<'_>) -> Result<Emoji, Error> {
+	if let Some(emoji) = emojis.iter().filter(|emoji| emoji.name == name).next() {
+		Ok(emoji.clone())
+	} else {
+		Ok(guild.create_emoji(ctx.discord(), name, &read_image(format!("./img/{}.png", name))?).await?)
+	}
 }
 
-pub struct BattlerStats {
+async fn create_health_bar(ctx: Context<'_>, health: usize, max_health: usize) -> Result<Vec<Emoji>, Error> {
+	let guild = ctx.guild().ok_or("No guild found.")?;
+	let emojis = guild.emojis(ctx.discord()).await?;
+
+	const HEALTHBAR_LENGTH: usize = 6;
+	let percent_health_remaining = health as f64 / max_health as f64;
+	let full_bar_emojis = if percent_health_remaining == 0.0 {
+		0
+	} else if percent_health_remaining == 1.0 {
+		HEALTHBAR_LENGTH
+	} else {
+		((HEALTHBAR_LENGTH as f64 * percent_health_remaining).floor() as usize).clamp(1, HEALTHBAR_LENGTH - 1)
+	};
+
+	let mut healthbar = vec![];
+	for i in 0..HEALTHBAR_LENGTH {
+		let fill_type = if i < full_bar_emojis { "full" } else { "empty" };
+		let bar_type = if i == 0 {
+			format!("{fill_type}_start")
+		} else if i == HEALTHBAR_LENGTH - 1 {
+			format!("{fill_type}_end")
+		} else {
+			format!("{fill_type}_middle")
+		};
+
+		healthbar.push(get_or_create_emoji(&emojis, &format!("bar_{bar_type}"), &guild, ctx).await?);
+	}
+
+	if healthbar.iter().any(|emoji| !emoji.available) { return Err("Some emojis aren't available.".into()) }
+
+	Ok(healthbar)
+}
+
+pub struct BattlerInfo<'a> {
+	pub ctx: Context<'a>,
+	pub name: String,
+	pub icon: Option<String>,
 	pub health: usize,
 	pub max_health: usize,
 }
 
-impl Display for BattlerStats {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "❤ {}/{}", self.health, self.max_health)
+impl BattlerInfo<'_> {
+	pub async fn display(&self) -> BattlerDisplay {
+		let health = if let Ok(healthbar) = create_health_bar(self.ctx, self.health, self.max_health).await {
+			let healthbar = healthbar.iter().fold(String::new(), |acc, emoji| acc + &emoji.to_string());
+			format!("❤ {healthbar} {}", self.health)
+		} else {
+			format!("❤️ {}/{}", self.health, self.max_health)
+		};
+
+		let stats = format!("{}", health);
+
+		BattlerDisplay(
+			self.name.clone(),
+			self.icon.clone(),
+			stats,
+		)
 	}
 }
+
+pub struct BattlerDisplay(
+	pub String,
+	pub Option<String>,
+	pub String,
+);
 
 pub fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mut CreateComponents {
 	c.create_action_row(|r|
@@ -39,26 +98,20 @@ pub fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mu
 	)
 }
 
-pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: BattlerInfo, p2: BattlerInfo, p1_turn: bool, log: &Log) -> &'a mut CreateEmbed {
-	let (current_name, current_icon) = {
-		if p1_turn {
-			(&p1.name, p1.icon)
-		} else {
-			(&p2.name, p2.icon)
-		}
-	};
+pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &BattlerDisplay, p2: &BattlerDisplay, p1_turn: bool, log: &Log) -> &'a mut CreateEmbed {
+	let current_player = if p1_turn { p1 } else { p2 };
 
 	let log = log.get_last_entries(3).map_or_else(|| "---".to_string(), |log| log.iter().fold(String::new(), |acc, entry| format!("{}\n{}", acc, entry)));
 
 	let e = base_embed(e)
-		.title(format!("{}'s turn", current_name))
+		.title(format!("{}'s turn", &current_player.0))
 		.fields(vec![
-			(p1.name, p1.stats, true),
-			(p2.name, p2.stats, true),
+			(&p1.0, &p1.2, true),
+			(&p2.0, &p2.2, true),
 		])
 		.field("Log", log, false);
 
-	if let Some(url) = current_icon {
+	if let Some(url) = &current_player.1 {
 		e.thumbnail(url)
 	} else {
 		e
