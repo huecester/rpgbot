@@ -1,10 +1,6 @@
-use crate::{
-	prelude::*,
-	util::base_embed,
-};
-use super::log::Log;
+use crate::prelude::*;
 
-use poise::serenity_prelude::{ButtonStyle, CreateComponents, CreateEmbed, Emoji, Guild, read_image};
+use poise::serenity_prelude::{ButtonStyle, CreateComponents, Emoji, Guild, read_image};
 
 async fn get_or_create_emoji(emojis: &Vec<Emoji>, name: &str, guild: &Guild, ctx: Context<'_>) -> Result<Emoji, Error> {
 	if let Some(emoji) = emojis.iter().filter(|emoji| emoji.name == name).next() {
@@ -94,42 +90,6 @@ pub fn create_invite_action_row(c: &mut CreateComponents, disabled: bool) -> &mu
 				.label("Run")
 				.style(ButtonStyle::Danger)
 				.disabled(disabled)
-		)
-	)
-}
-
-pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &BattlerDisplay, p2: &BattlerDisplay, p1_turn: bool, log: &Log) -> &'a mut CreateEmbed {
-	let current_player = if p1_turn { p1 } else { p2 };
-
-	let log = log.get_last_entries(3).map_or_else(|| "---".to_string(), |log| log.iter().fold(String::new(), |acc, entry| format!("{}\n{}", acc, entry)));
-
-	let e = base_embed(e)
-		.title(format!("{}'s turn", &current_player.0))
-		.fields(vec![
-			(&p1.0, &p1.2, true),
-			(&p2.0, &p2.2, true),
-		])
-		.field("Log", log, false);
-
-	if let Some(url) = &current_player.1 {
-		e.thumbnail(url)
-	} else {
-		e
-	}
-}
-
-pub fn create_battle_components(c: &mut CreateComponents) -> &mut CreateComponents {
-	c.create_action_row(|r|
-		r.create_button(|b|
-			b.custom_id("attack")
-				.emoji('⚔')
-				.label("Attack")
-				.style(ButtonStyle::Primary)
-		).create_button(|b|
-			b.custom_id("surrender")
-				.emoji('🏳')
-				.label("Surrender")
-				.style(ButtonStyle::Danger)
 		)
 	)
 }

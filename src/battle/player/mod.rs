@@ -1,13 +1,17 @@
 mod item;
+mod util;
+
+pub use util::create_battle_embed;
 
 use crate::prelude::*;
-use item::Item;
 use super::{
 	Battle,
 	Battler,
 	log::Entry,
-	util::{BattlerInfo, create_battle_components, create_battle_embed},
+	util::BattlerInfo,
 };
+use item::Item;
+use util::create_battle_components;
 
 use std::sync::{
 	Weak,

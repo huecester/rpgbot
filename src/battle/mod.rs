@@ -3,9 +3,11 @@ mod player;
 mod util;
 
 pub use player::Player;
+
 use crate::{prelude::*, util::base_embed};
 use log::Log;
-use util::{BattlerInfo, create_battle_embed, create_invite_action_row};
+use player::create_battle_embed;
+use util::{BattlerInfo, create_invite_action_row};
 
 use std::sync::{
 	Arc,
