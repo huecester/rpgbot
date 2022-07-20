@@ -5,7 +5,7 @@ mod util;
 pub use player::Player;
 use crate::{prelude::*, util::base_embed};
 use log::Log;
-use util::{BattlerInfo, create_battle_components, create_battle_embed, create_invite_action_row};
+use util::{BattlerInfo, create_battle_embed, create_invite_action_row};
 
 use std::sync::{
 	Arc,
@@ -130,20 +130,6 @@ impl<'a> Battle<'a> {
 	async fn battle_loop(&self) -> Result<(), Error> {
 		while self.p1.lock().await.health() > 0 && self.p2.lock().await.health() > 0 {
 			let p1_turn = self.p1_turn.load(Ordering::Relaxed);
-
-			{
-				let p1 = self.p1.lock().await;
-				let p2 = self.p2.lock().await;
-
-				let p1_display = p1.info().display().await;
-				let p2_display = p2.info().display().await;
-				let log = self.log.lock().await;
-
-				self.message.lock().await.edit(self.ctx.discord(), |m|
-					m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, p1_turn, &log))
-						.components(|c| create_battle_components(c))
-				).await?;
-			}
 
 			if p1_turn {
 				self.p1.lock().await.act().await?;

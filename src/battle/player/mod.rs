@@ -1,19 +1,23 @@
-use std::sync::Weak;
+mod item;
 
 use crate::prelude::*;
+use item::Item;
 use super::{
 	Battle,
 	Battler,
 	log::Entry,
-	util::BattlerInfo,
+	util::{BattlerInfo, create_battle_components, create_battle_embed},
 };
 
+use std::sync::{
+	Weak,
+	atomic::Ordering,
+};
 use async_trait::async_trait;
 use poise::serenity_prelude::{User, UserId};
 use rand::Rng;
 use uuid::Uuid;
 
-#[derive(Clone)]
 pub struct Player<'a> {
 	user: User,
 	id: Uuid,
@@ -22,6 +26,7 @@ pub struct Player<'a> {
 	battle: Option<Weak<Battle<'a>>>,
 	health: usize,
 	max_health: usize,
+	items: Vec<Box<dyn Item>>,
 }
 
 impl<'a> Player<'a> {
@@ -34,6 +39,7 @@ impl<'a> Player<'a> {
 			battle: None,
 			health: 100,
 			max_health: 100,
+			items: vec![],
 		}
 	}
 
@@ -67,13 +73,33 @@ impl<'a> Battler<'a> for Player<'a> {
 
 	async fn act(&mut self) -> Result<(), Error> {
 		let battle = self.battle.as_ref().unwrap().upgrade().unwrap();
+		let mut message = battle.message.lock().await;
+		let mut log = battle.log.lock().await;
 
-		let interaction = battle.message.lock().await
+		{
+			if self.is_p1 {
+				let p1_display = self.info().display().await;
+				let p2_display = battle.p2.lock().await.info().display().await;
+
+				message.edit(self.ctx.discord(), |m|
+					m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
+						.components(|c| create_battle_components(c))
+				).await?;
+			} else {
+				let p1_display = battle.p1.lock().await.info().display().await;
+				let p2_display = self.info().display().await;
+
+				message.edit(self.ctx.discord(), |m|
+					m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
+						.components(|c| create_battle_components(c))
+				).await?;
+			}
+		}
+
+		let interaction = message
 			.await_component_interaction(self.ctx.discord())
 			.author_id(self.user.id)
 			.await;
-
-		let mut log = battle.log.lock().await;
 
 		if let Some(m) = interaction {
 			m.defer(self.ctx.discord()).await?;
