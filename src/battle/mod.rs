@@ -41,8 +41,8 @@ pub struct Battle<'a> {
 	id: Uuid,
 	ctx: Context<'a>,
 	message: Mutex<Message>,
-	p1: SharedBattler<dyn 'a + Battler<'a>>,
-	p2: SharedBattler<dyn 'a + Battler<'a>>,
+	p1: SharedBattler<dyn Battler<'a> + 'a>,
+	p2: SharedBattler<dyn Battler<'a> + 'a>,
 	p1_turn: AtomicBool,
 	log: Mutex<Log>,
 }
