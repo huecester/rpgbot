@@ -81,7 +81,7 @@ impl<'a> Player<'a> {
 
 					message.edit(self.ctx.discord(), |m|
 						m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
-							.components(|c| create_battle_components(c, self.items.is_empty()))
+							.components(|c| create_battle_components(c, false, self.items.is_empty()))
 					).await?;
 				} else {
 					let p1_display = battle.p1.lock().await.info().display().await;
@@ -89,7 +89,7 @@ impl<'a> Player<'a> {
 
 					message.edit(self.ctx.discord(), |m|
 						m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
-							.components(|c| create_battle_components(c, self.items.is_empty()))
+							.components(|c| create_battle_components(c, false, self.items.is_empty()))
 					).await?;
 				}
 			}
@@ -114,6 +114,10 @@ impl<'a> Player<'a> {
 							self.ctx.send(|m| m.content("You have no items.").ephemeral(true)).await?;
 							continue;
 						}
+
+						battle.message.lock().await.edit(self.ctx.discord(), |m|
+							m.components(|c| create_battle_components(c, true, true))
+						).await?;
 
 						if !self.item().await? {
 							continue;
@@ -197,11 +201,10 @@ impl<'a> Player<'a> {
 
 		if let Some(m) = interaction {
 			m.defer(self.ctx.discord()).await?;
+			message.delete(self.ctx.discord()).await?;
 
 			match &*m.data.custom_id {
 				"item" => {
-					message.delete(self.ctx.discord()).await?;
-
 					let item_id = Uuid::parse_str(m.data.values.get(0).ok_or("No values received.")?)?;
 					let item = self.items
 						.get(&item_id)
@@ -213,7 +216,6 @@ impl<'a> Player<'a> {
 					self.items.remove(&item_id);
 				},
 				"back" => {
-					message.delete(self.ctx.discord()).await?;
 					return Ok(false);
 				},
 				other => return Err(format!("Unknown ID {other}.").into()),
