@@ -1,11 +1,10 @@
 use crate::{
 	prelude::*,
-	battle::{Battler, Battle, log::Entry},
+	battle::{Battler, Battle},
 };
 
 use async_trait::async_trait;
 use poise::serenity_prelude::{CreateSelectMenuOption, ReactionType};
-use rand::Rng;
 use uuid::Uuid;
 
 #[async_trait]
@@ -24,37 +23,5 @@ impl dyn Item {
 			.value(self.id())
 			.description(self.description())
 			.emoji(self.icon().clone())
-	}
-}
-
-pub struct Apple(Uuid);
-
-#[async_trait]
-impl Item for Apple {
-	fn new() -> Self {
-		Self(Uuid::new_v4())
-	}
-
-	fn name(&self) -> &str {
-		"Apple"
-	}
-
-	fn id(&self) -> &Uuid {
-		&self.0
-	}
-
-	fn description(&self) ->  &str {
-		"Heal 5-20 HP."
-	}
-
-	fn icon(&self) -> ReactionType {
-		'🍎'.into()
-	}
-
-	async fn use_item<'a>(&self, user: &dyn Battler<'a>, battle: &Battle, _is_p1: bool) -> Result<(), Error> {
-		let healing = rand::thread_rng().gen_range(5..=20);
-		user.heal(healing);
-		battle.log.lock().await.add(Entry::Item(self.icon(), format!("{} ate an apple and healed for {} health.", user.name(), healing)));
-		Ok(())
 	}
 }

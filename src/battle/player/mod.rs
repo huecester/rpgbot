@@ -1,10 +1,10 @@
 mod item;
+mod items;
 mod util;
 
 pub use util::create_battle_embed;
 
 use crate::prelude::*;
-use self::item::Apple;
 
 use super::{
 	Battle,
@@ -13,6 +13,7 @@ use super::{
 	util::BattlerInfo,
 };
 use item::Item;
+use items::{Apple, Coin, FaultyWaterGun};
 use util::create_battle_components;
 
 use std::{
@@ -24,7 +25,7 @@ use std::{
 };
 use async_trait::async_trait;
 use poise::serenity_prelude::{ButtonStyle, User, UserId };
-use rand::Rng;
+use rand::{Rng, prelude::SliceRandom};
 use uuid::Uuid;
 
 pub struct Player<'a> {
@@ -40,12 +41,26 @@ pub struct Player<'a> {
 
 impl<'a> Player<'a> {
 	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
-		let items: HashMap<Uuid, Box<dyn Item>> = vec![
-			Apple::new()
-		].into_iter().fold(HashMap::new(), |mut acc, item| {
-			acc.insert(item.id().clone(), Box::new(item));
-			acc
-		});
+		let mut all_items: Vec<Box<dyn Item>> = vec![
+			Box::new(Apple::new()),
+			Box::new(Apple::new()),
+			Box::new(Apple::new()),
+			Box::new(Coin::new()),
+			Box::new(Coin::new()),
+			Box::new(Coin::new()),
+			Box::new(FaultyWaterGun::new()),
+			Box::new(FaultyWaterGun::new()),
+			Box::new(FaultyWaterGun::new()),
+		];
+		all_items.shuffle(&mut rand::thread_rng());
+
+		let items: HashMap<Uuid, Box<dyn Item>> = all_items
+			.into_iter()
+			.take(3)
+			.fold(HashMap::new(), |mut acc, item| {
+				acc.insert(item.id().clone(), item);
+				acc
+			});
 
 		Self {
 			user,
@@ -149,7 +164,7 @@ impl<'a> Player<'a> {
 		let (mut damage, critical) = {
 			let mut rand = rand::thread_rng();
 			let damage: usize = rand.gen_range(1..=25);
-			let critical = rand.gen_bool(1.0 / 100.0);
+			let critical = rand.gen_ratio(2, 100);
 			(damage, critical)
 		};
 
