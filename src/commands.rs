@@ -38,6 +38,7 @@ pub async fn duel(
 
 	if let Err(e) = Battle::send_invite(ctx, p1, opponent).await {
         eprintln!("{:?}", e);
+        ctx.send(|m| m.content("There was an error during the battle.").ephemeral(true)).await?;
         return Err("There was an error during the battle.".into());
     };
 	Ok(())
