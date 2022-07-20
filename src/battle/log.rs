@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use poise::serenity_prelude::ReactionType;
 
 #[non_exhaustive]
 #[derive(Clone)]
@@ -7,6 +8,7 @@ pub enum Entry {
 	Critical(String, String, usize),
 	Surrender(String),
 	Timeout(String),
+	Item(ReactionType, String),
 }
 
 impl Display for Entry {
@@ -15,7 +17,8 @@ impl Display for Entry {
 			Entry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
 			Entry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
 			Entry::Surrender(player) => format!("🏳 {player} surrendered."),
-			Entry::Timeout(player) => format!("🏳 {player} took too long."),
+			Entry::Timeout(player) => format!("🕑 {player} took too long."),
+			Entry::Item(icon, str) => format!("{icon} {str}"),
 		};
 
 		write!(f, "{}", entry)

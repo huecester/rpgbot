@@ -28,13 +28,19 @@ pub fn create_battle_embed<'a>(e: &'a mut CreateEmbed, p1: &BattlerDisplay, p2: 
 	}
 }
 
-pub fn create_battle_components(c: &mut CreateComponents) -> &mut CreateComponents {
+pub fn create_battle_components(c: &mut CreateComponents, disable_items: bool) -> &mut CreateComponents {
 	c.create_action_row(|r|
 		r.create_button(|b|
 			b.custom_id("attack")
 				.emoji('⚔')
 				.label("Attack")
 				.style(ButtonStyle::Primary)
+		).create_button( |b|
+			b.custom_id("item")
+				.emoji('🎒')
+				.label("Items...")
+				.style(ButtonStyle::Primary)
+				.disabled(disable_items)
 		).create_button(|b|
 			b.custom_id("surrender")
 				.emoji('🏳')
