@@ -28,6 +28,8 @@ use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::{Rng, prelude::SliceRandom};
 use uuid::Uuid;
 
+type Callback = Box<dyn FnMut(&mut Player) -> () + Send + Sync>;
+
 pub struct Player<'a> {
 	user: User,
 	id: Uuid,
@@ -37,6 +39,7 @@ pub struct Player<'a> {
 	health: AtomicUsize,
 	max_health: usize,
 	items: HashMap<Uuid, Box<dyn Item>>,
+	before_damage: Vec<Callback>,
 }
 
 impl<'a> Player<'a> {
@@ -71,6 +74,7 @@ impl<'a> Player<'a> {
 			health: AtomicUsize::new(100),
 			max_health: 100,
 			items,
+			before_damage: vec![],
 		}
 	}
 

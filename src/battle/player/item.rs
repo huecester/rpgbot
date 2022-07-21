@@ -1,7 +1,8 @@
 use crate::{
 	prelude::*,
-	battle::{Battler, Battle},
+	battle::Battle,
 };
+use super::Player;
 
 use async_trait::async_trait;
 use poise::serenity_prelude::{CreateSelectMenuOption, ReactionType};
@@ -14,7 +15,7 @@ pub trait Item: Send + Sync {
 	fn id(&self) -> &Uuid;
 	fn description(&self) -> &str;
 	fn icon(&self) -> ReactionType;
-	async fn use_item<'a>(&self, user: &dyn Battler<'a>, battle: &Battle, is_p1: bool) -> Result<(), Error>;
+	async fn use_item(&self, user: &Player, battle: &Battle, is_p1: bool) -> Result<(), Error>;
 }
 
 impl dyn Item {
