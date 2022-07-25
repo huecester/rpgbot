@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::{
 	prelude::*,
 	battle::{
@@ -39,7 +41,7 @@ impl Item for Apple {
 
 	async fn use_item(&self, player: &Player, battle: &Battle, _is_p1: bool) -> Result<(), Error> {
 		let healing = rand::thread_rng().gen_range(5..=20);
-		player.heal(healing);
+		let healing = player.heal(healing);
 		battle.log.lock().await.add(Entry::Item(self.icon(), format!("{} ate an apple and healed for {} health.", player.name(), healing)));
 		Ok(())
 	}
@@ -81,11 +83,11 @@ impl Item for Coin {
 
 		let opponent = if is_p1 { battle.p2.lock().await } else { battle.p1.lock().await };
 		if heal {
-			opponent.heal(health);
-			log.add(Entry::Item(self.icon(), format!("{} flipped {} healing against {}.", player.name(), health, opponent.name())));
+			let healing = opponent.heal(health);
+			log.add(Entry::Item(self.icon(), format!("{} flipped {} healing against {}.", player.name(), healing, opponent.name())));
 		} else {
-			opponent.damage(health);
-			log.add(Entry::Item(self.icon(), format!("{} flipped {} damage against {}.", player.name(), health, opponent.name())))
+			let damage = opponent.damage(health);
+			log.add(Entry::Item(self.icon(), format!("{} flipped {} damage against {}.", player.name(), damage, opponent.name())))
 		}
 
 		Ok(())
@@ -128,13 +130,52 @@ impl Item for FaultyWaterGun {
 		let mut log = battle.log.lock().await;
 
 		if backfire {
-			player.damage(self_damage);
-			log.add(Entry::Item(self.icon(), format!("{}'s water gun backfired, dealing {} damage to themselves.", player.name(), self_damage)));
+			let damage = player.damage(self_damage);
+			log.add(Entry::Item(self.icon(), format!("{}'s water gun backfired, dealing {} damage to themselves.", player.name(), damage)));
 		} else {
 			let opponent = if is_p1 { battle.p2.lock().await } else { battle.p1.lock().await };
-			opponent.damage(opponent_damage);
-			log.add(Entry::Item(self.icon(), format!("{} splashed {} with a water gun, dealing {} damage.", player.name(), opponent.name(), opponent_damage)));
+			let damage = opponent.damage(opponent_damage);
+			log.add(Entry::Item(self.icon(), format!("{} splashed {} with a water gun, dealing {} damage.", player.name(), opponent.name(), damage)));
 		}
+
+		Ok(())
+	}
+}
+
+pub struct Shield(Uuid);
+
+#[async_trait]
+impl Item for Shield {
+	fn new() -> Self {
+		Self(Uuid::new_v4())
+	}
+
+	fn name(&self) -> &str {
+		"Shield"
+	}
+
+	fn id(&self) -> &Uuid {
+		&self.0
+	}
+
+	fn description(&self) -> &str {
+		"Gain 5-10 armor."
+	}
+
+	fn icon(&self) -> ReactionType {
+		'🛡'.into()
+	}
+
+	async fn use_item(&self, player: &Player, battle: &Battle, _is_p1: bool) -> Result<(), Error> {
+		let armor = {
+			let mut rng = rand::thread_rng();
+			rng.gen_range(5..=10)
+		};
+		let mut log = battle.log.lock().await;
+
+		let current_armor = player.armor.load(Ordering::Relaxed);
+		player.armor.store(current_armor.checked_add(armor).unwrap_or(usize::MAX), Ordering::Relaxed);
+		log.add(Entry::Item(self.icon(), format!("{} equipped a shield, gaining {} armor.", player.name(), armor)));
 
 		Ok(())
 	}

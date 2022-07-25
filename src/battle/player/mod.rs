@@ -13,7 +13,7 @@ use super::{
 	util::BattlerInfo,
 };
 use item::Item;
-use items::{Apple, Coin, FaultyWaterGun};
+use items::{Apple, Coin, FaultyWaterGun, Shield};
 use util::create_battle_components;
 
 use std::{
@@ -28,8 +28,6 @@ use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::{Rng, prelude::SliceRandom};
 use uuid::Uuid;
 
-type Callback = Box<dyn FnMut(&mut Player) -> () + Send + Sync>;
-
 pub struct Player<'a> {
 	user: User,
 	id: Uuid,
@@ -39,7 +37,7 @@ pub struct Player<'a> {
 	health: AtomicUsize,
 	max_health: usize,
 	items: HashMap<Uuid, Box<dyn Item>>,
-	before_damage: Vec<Callback>,
+	armor: AtomicUsize,
 }
 
 impl<'a> Player<'a> {
@@ -47,13 +45,12 @@ impl<'a> Player<'a> {
 		let mut all_items: Vec<Box<dyn Item>> = vec![
 			Box::new(Apple::new()),
 			Box::new(Apple::new()),
-			Box::new(Apple::new()),
-			Box::new(Coin::new()),
 			Box::new(Coin::new()),
 			Box::new(Coin::new()),
 			Box::new(FaultyWaterGun::new()),
 			Box::new(FaultyWaterGun::new()),
-			Box::new(FaultyWaterGun::new()),
+			Box::new(Shield::new()),
+			Box::new(Shield::new()),
 		];
 		all_items.shuffle(&mut rand::thread_rng());
 
@@ -74,7 +71,7 @@ impl<'a> Player<'a> {
 			health: AtomicUsize::new(100),
 			max_health: 100,
 			items,
-			before_damage: vec![],
+			armor: AtomicUsize::new(0),
 		}
 	}
 
@@ -130,7 +127,6 @@ impl<'a> Player<'a> {
 					},
 					"item" => {
 						if self.items.is_empty() {
-							self.ctx.send(|m| m.content("You have no items.").ephemeral(true)).await?;
 							continue;
 						}
 
@@ -174,15 +170,18 @@ impl<'a> Player<'a> {
 
 		if critical {
 			damage = damage.checked_mul(2).unwrap_or(usize::MAX);
-			log.add(Entry::Critical(self.name().clone(), opponent_name, damage));
-		} else {
-			log.add(Entry::Attack(self.name().clone(), opponent_name, damage));
 		}
 
-		if self.is_p1 {
-			battle.p2.lock().await.damage(damage);
+		let damage_dealt = if self.is_p1 {
+			battle.p2.lock().await.damage(damage)
 		} else {
-			battle.p1.lock().await.damage(damage);
+			battle.p1.lock().await.damage(damage)
+		};
+
+		if critical {
+			log.add(Entry::Critical(self.name().clone(), opponent_name, damage_dealt));
+		} else {
+			log.add(Entry::Attack(self.name().clone(), opponent_name, damage_dealt));
 		}
 
 		Ok(())
@@ -274,13 +273,19 @@ impl<'a> Battler<'a> for Player<'a> {
 	fn max_health(&self) -> usize {
 		self.max_health
 	}
-	fn damage(&self, damage: usize) {
+	fn damage(&self, damage: usize) -> usize {
 		let health = self.health.load(Ordering::Relaxed);
-		self.health.store(health - damage.min(health), Ordering::Relaxed);
+		let armor = self.armor.load(Ordering::Relaxed);
+
+		let damage = damage.checked_sub(armor).unwrap_or(0).min(health);
+		self.health.store(health - damage, Ordering::Relaxed);
+		damage
 	}
-	fn heal(&self, healing: usize) {
+	fn heal(&self, healing: usize) -> usize {
 		let health = self.health.load(Ordering::Relaxed);
-		self.health.store(health + healing.min(self.max_health - health), Ordering::Relaxed);
+		let healing = healing.min(self.max_health - health);
+		self.health.store(health + healing, Ordering::Relaxed);
+		healing
 	}
 
 	fn set_health(&mut self, target: usize) {
@@ -294,6 +299,7 @@ impl<'a> Battler<'a> for Player<'a> {
 			icon: self.icon(),
 			health: self.health(),
 			max_health: self.max_health(),
+			armor: self.armor.load(Ordering::Relaxed),
 		}
 	}
 }

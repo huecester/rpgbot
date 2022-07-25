@@ -49,6 +49,7 @@ pub struct BattlerInfo<'a> {
 	pub icon: Option<String>,
 	pub health: usize,
 	pub max_health: usize,
+	pub armor: usize,
 }
 
 impl BattlerInfo<'_> {
@@ -60,7 +61,9 @@ impl BattlerInfo<'_> {
 			format!("❤️ {}/{}", self.health, self.max_health)
 		};
 
-		let stats = format!("{}", health);
+		let armor = format!("🛡 {}", self.armor);
+
+		let stats = format!("{health}\n{armor}");
 
 		BattlerDisplay(
 			self.name.clone(),
