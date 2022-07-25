@@ -1,5 +1,4 @@
 mod item;
-mod items;
 mod util;
 
 pub use util::create_battle_embed;
@@ -12,8 +11,7 @@ use super::{
 	log::Entry,
 	util::BattlerInfo,
 };
-use item::Item;
-use items::{Apple, Coin, FaultyWaterGun, Shield};
+use item::{Item, Apple, Coin, FaultyWaterGun, Shield};
 use util::create_battle_components;
 
 use std::{

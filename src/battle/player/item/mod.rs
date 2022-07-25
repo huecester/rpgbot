@@ -1,3 +1,13 @@
+mod apple;
+mod coin;
+mod faulty_water_gun;
+mod shield;
+
+pub use apple::Apple;
+pub use coin::Coin;
+pub use faulty_water_gun::FaultyWaterGun;
+pub use shield::Shield;
+
 use crate::{
 	prelude::*,
 	battle::Battle,
