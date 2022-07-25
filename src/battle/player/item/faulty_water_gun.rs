@@ -49,11 +49,11 @@ impl Item for FaultyWaterGun {
 		let mut log = battle.log.lock().await;
 
 		if backfire {
-			let damage = player.damage(self_damage);
+			let damage = player.damage(self_damage, 0);
 			log.add(Entry::Item(self.icon(), format!("{}'s water gun backfired, dealing {} damage to themselves.", player.name(), damage)));
 		} else {
 			let opponent = if is_p1 { battle.p2.lock().await } else { battle.p1.lock().await };
-			let damage = opponent.damage(opponent_damage);
+			let damage = opponent.damage(opponent_damage, 0);
 			log.add(Entry::Item(self.icon(), format!("{} splashed {} with a water gun, dealing {} damage.", player.name(), opponent.name(), damage)));
 		}
 

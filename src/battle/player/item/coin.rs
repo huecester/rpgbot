@@ -52,7 +52,7 @@ impl Item for Coin {
 			let healing = opponent.heal(health);
 			log.add(Entry::Item(self.icon(), format!("{} flipped {} healing against {}.", player.name(), healing, opponent.name())));
 		} else {
-			let damage = opponent.damage(health);
+			let damage = opponent.damage(health, 0);
 			log.add(Entry::Item(self.icon(), format!("{} flipped {} damage against {}.", player.name(), damage, opponent.name())))
 		}
 

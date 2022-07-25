@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use poise::serenity_prelude::{ButtonStyle, CreateComponents, Emoji, Guild, read_image};
+use poise::serenity_prelude::{ButtonStyle, CreateComponents, Emoji, Guild, ReactionType, read_image};
 
 async fn get_or_create_emoji(emojis: &Vec<Emoji>, name: &str, guild: &Guild, ctx: Context<'_>) -> Result<Emoji, Error> {
 	if let Some(emoji) = emojis.iter().filter(|emoji| emoji.name == name).next() {
@@ -49,6 +49,7 @@ pub struct BattlerInfo<'a> {
 	pub icon: Option<String>,
 	pub health: usize,
 	pub max_health: usize,
+	pub weapon: (ReactionType, String),
 	pub armor: usize,
 }
 
@@ -61,9 +62,12 @@ impl BattlerInfo<'_> {
 			format!("❤️ {}/{}", self.health, self.max_health)
 		};
 
+		let weapon = format!("{} {}", self.weapon.0, self.weapon.1);
+
 		let armor = format!("🛡 {}", self.armor);
 
-		let stats = format!("{health}\n{armor}");
+
+		let stats = format!("{health}\n{weapon}\n{armor}");
 
 		BattlerDisplay(
 			self.name.clone(),

@@ -4,7 +4,7 @@ use poise::serenity_prelude::ReactionType;
 #[non_exhaustive]
 #[derive(Clone)]
 pub enum Entry {
-	Attack(String, String, usize),
+	Attack(ReactionType, String, String, usize),
 	Critical(String, String, usize),
 	Surrender(String),
 	Timeout(String),
@@ -14,7 +14,7 @@ pub enum Entry {
 impl Display for Entry {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let entry = match self {
-			Entry::Attack(p1, p2, damage) => format!("⚔ {p1} attacked {p2} for {damage} damage."),
+			Entry::Attack(icon, p1, p2, damage) => format!("{icon} {p1} attacked {p2} for {damage} damage."),
 			Entry::Critical(p1, p2, damage) => format!("💥 {p1} got a critical hit on {p2} for {damage} damage!"),
 			Entry::Surrender(player) => format!("🏳 {player} surrendered."),
 			Entry::Timeout(player) => format!("🕑 {player} took too long."),

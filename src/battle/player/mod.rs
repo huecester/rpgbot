@@ -1,18 +1,30 @@
 mod item;
 mod util;
+mod weapon;
 
 pub use util::create_battle_embed;
 
 use crate::prelude::*;
-
 use super::{
 	Battle,
 	Battler,
 	log::Entry,
 	util::BattlerInfo,
 };
-use item::{Item, Apple, Coin, FaultyWaterGun, Shield};
+use item::{
+	Item,
+	Apple,
+	Coin,
+	FaultyWaterGun,
+	Shield,
+};
 use util::create_battle_components;
+use weapon::{
+	Weapon,
+	Hammer,
+	Spear,
+	Sword,
+};
 
 use std::{
 	collections::HashMap,
@@ -23,7 +35,7 @@ use std::{
 };
 use async_trait::async_trait;
 use poise::serenity_prelude::{ButtonStyle, User, UserId };
-use rand::{Rng, prelude::SliceRandom};
+use rand::prelude::*;
 use uuid::Uuid;
 
 pub struct Player<'a> {
@@ -34,31 +46,45 @@ pub struct Player<'a> {
 	battle: Option<Weak<Battle<'a>>>,
 	health: AtomicUsize,
 	max_health: usize,
+	weapon: Box<dyn Weapon>,
 	items: HashMap<Uuid, Box<dyn Item>>,
 	armor: AtomicUsize,
 }
 
 impl<'a> Player<'a> {
 	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
-		let mut all_items: Vec<Box<dyn Item>> = vec![
-			Box::new(Apple::new()),
-			Box::new(Apple::new()),
-			Box::new(Coin::new()),
-			Box::new(Coin::new()),
-			Box::new(FaultyWaterGun::new()),
-			Box::new(FaultyWaterGun::new()),
-			Box::new(Shield::new()),
-			Box::new(Shield::new()),
-		];
-		all_items.shuffle(&mut rand::thread_rng());
+		let items = {
+			let all_items: Vec<Box<dyn Item>> = vec![
+				Box::new(Apple::new()),
+				Box::new(Apple::new()),
+				Box::new(Coin::new()),
+				Box::new(Coin::new()),
+				Box::new(FaultyWaterGun::new()),
+				Box::new(FaultyWaterGun::new()),
+				Box::new(Shield::new()),
+				Box::new(Shield::new()),
+			];
+			all_items
+			 	.into_iter()
+				.choose_multiple(&mut rand::thread_rng(), 3)
+				.into_iter()
+				.fold(HashMap::new(), |mut acc, item| {
+					acc.insert(item.id().clone(), item);
+					acc
+				})
+		};
 
-		let items: HashMap<Uuid, Box<dyn Item>> = all_items
-			.into_iter()
-			.take(3)
-			.fold(HashMap::new(), |mut acc, item| {
-				acc.insert(item.id().clone(), item);
-				acc
-			});
+		let weapon = {
+			let all_weapons: Vec<Box<dyn Weapon>> = vec![
+				Box::new(Sword::new()),
+				Box::new(Spear::new()),
+				Box::new(Hammer::new()),
+			];
+			all_weapons
+			 	.into_iter()
+				.choose(&mut rand::thread_rng())
+				.unwrap()
+		};
 
 		Self {
 			user,
@@ -68,6 +94,7 @@ impl<'a> Player<'a> {
 			battle: None,
 			health: AtomicUsize::new(100),
 			max_health: 100,
+			weapon,
 			items,
 			armor: AtomicUsize::new(0),
 		}
@@ -117,7 +144,7 @@ impl<'a> Player<'a> {
 				m.defer(self.ctx.discord()).await?;
 
 				match &*m.data.custom_id {
-					"attack" => self.attack().await?,
+					"attack" => self.weapon.attack(self, &battle, self.is_p1).await?,
 					"surrender" => {
 						let mut log = battle.log.lock().await;
 						log.add(Entry::Surrender(self.name().clone()));
@@ -144,42 +171,6 @@ impl<'a> Player<'a> {
 			}
 
 			break;
-		}
-
-		Ok(())
-	}
-
-	async fn attack(&self) -> Result<(), Error> {
-		let battle = self.battle.as_ref().ok_or("Battle is unset.")?.upgrade().ok_or("Battle is over.")?;
-		let mut log = battle.log.lock().await;
-
-		let opponent_name = if self.is_p1 {
-			battle.p2.lock().await.name().clone()
-		} else {
-			battle.p1.lock().await.name().clone()
-		};
-
-		let (mut damage, critical) = {
-			let mut rand = rand::thread_rng();
-			let damage: usize = rand.gen_range(1..=25);
-			let critical = rand.gen_ratio(2, 100);
-			(damage, critical)
-		};
-
-		if critical {
-			damage = damage.checked_mul(2).unwrap_or(usize::MAX);
-		}
-
-		let damage_dealt = if self.is_p1 {
-			battle.p2.lock().await.damage(damage)
-		} else {
-			battle.p1.lock().await.damage(damage)
-		};
-
-		if critical {
-			log.add(Entry::Critical(self.name().clone(), opponent_name, damage_dealt));
-		} else {
-			log.add(Entry::Attack(self.name().clone(), opponent_name, damage_dealt));
 		}
 
 		Ok(())
@@ -215,9 +206,10 @@ impl<'a> Player<'a> {
 			.author_id(self.user.id)
 			.await;
 
+		message.delete(self.ctx.discord()).await?;
+
 		if let Some(m) = interaction {
 			m.defer(self.ctx.discord()).await?;
-			message.delete(self.ctx.discord()).await?;
 
 			match &*m.data.custom_id {
 				"item" => {
@@ -236,6 +228,8 @@ impl<'a> Player<'a> {
 				},
 				other => return Err(format!("Unknown ID {other}.").into()),
 			}
+		} else {
+			return Ok(false);
 		}
 
 		Ok(true)
@@ -271,11 +265,11 @@ impl<'a> Battler<'a> for Player<'a> {
 	fn max_health(&self) -> usize {
 		self.max_health
 	}
-	fn damage(&self, damage: usize) -> usize {
+	fn damage(&self, damage: usize, pierce: usize) -> usize {
 		let health = self.health.load(Ordering::Relaxed);
 		let armor = self.armor.load(Ordering::Relaxed);
 
-		let damage = damage.checked_sub(armor).unwrap_or(0).min(health);
+		let damage = damage.checked_sub(armor.checked_sub(pierce).unwrap_or(0)).unwrap_or(0).min(health);
 		self.health.store(health - damage, Ordering::Relaxed);
 		damage
 	}
@@ -297,6 +291,7 @@ impl<'a> Battler<'a> for Player<'a> {
 			icon: self.icon(),
 			health: self.health(),
 			max_health: self.max_health(),
+			weapon: (self.weapon.icon(), self.weapon.name().to_string()),
 			armor: self.armor.load(Ordering::Relaxed),
 		}
 	}

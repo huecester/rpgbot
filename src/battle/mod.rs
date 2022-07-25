@@ -31,7 +31,7 @@ pub trait Battler<'a>: Send + Sync {
 
 	fn health(&self) -> usize;
 	fn max_health(&self) -> usize;
-	fn damage(&self, damage: usize) -> usize;
+	fn damage(&self, damage: usize, pierce: usize) -> usize;
 	fn heal(&self, healing: usize) -> usize;
 
 	fn set_health(&mut self, target: usize);
