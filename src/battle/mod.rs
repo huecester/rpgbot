@@ -39,13 +39,12 @@ pub trait Battler<'a>: Send + Sync {
 	fn info(&self) -> BattlerInfo;
 }
 
-type SharedBattler<T> = Arc<Mutex<T>>;
 pub struct Battle<'a> {
 	id: Uuid,
 	ctx: Context<'a>,
 	message: Mutex<Message>,
-	p1: SharedBattler<dyn Battler<'a> + 'a>,
-	p2: SharedBattler<dyn Battler<'a> + 'a>,
+	p1: Arc<Mutex<dyn Battler<'a> + 'a>>,
+	p2: Arc<Mutex<dyn Battler<'a> + 'a>>,
 	p1_turn: AtomicBool,
 	log: Mutex<Log>,
 }
@@ -53,8 +52,8 @@ pub struct Battle<'a> {
 impl<'a> Battle<'a> {
 	async fn new<T, U>(ctx: Context<'a>, message: Message, p1: T, p2: U) -> Arc<Battle<'a>>
 		where
-			T: 'a + Battler<'a>,
-			U: 'a + Battler<'a>,
+			T: Battler<'a> + 'a,
+			U: Battler<'a> + 'a,
 	{
 		let battle = {
 			let p1 = Arc::new(Mutex::new(p1));
