@@ -11,28 +11,11 @@ use super::{
 	log::Entry,
 	util::BattlerInfo,
 };
-use item::{
-	Item,
-	Apple,
-	Coin,
-	FaultyWaterGun,
-	Shield,
-};
+use item::Item;
 use util::create_battle_components;
-use weapon::{
-	Weapon,
-	Hammer,
-	Spear,
-	Sword,
-};
+use weapon::Weapon;
 
-use std::{
-	collections::HashMap,
-	sync::{
-		Weak,
-		atomic::{AtomicUsize, Ordering},
-	},
-};
+use std::collections::HashMap;
 use async_trait::async_trait;
 use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::prelude::*;
@@ -43,42 +26,116 @@ pub struct Player<'a> {
 	id: Uuid,
 	is_p1: bool,
 	ctx: Context<'a>,
-	battle: Option<Weak<Battle<'a>>>,
-	health: AtomicUsize,
+	health: usize,
 	max_health: usize,
-	weapon: Box<dyn Weapon>,
-	items: HashMap<Uuid, Box<dyn Item>>,
-	armor: AtomicUsize,
+	weapon: Weapon,
+	items: HashMap<Uuid, Item>,
+	armor: usize,
 }
 
 impl<'a> Player<'a> {
 	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
 		let items = {
-			let all_items: Vec<Box<dyn Item>> = vec![
-				Box::new(Apple::new()),
-				Box::new(Apple::new()),
-				Box::new(Coin::new()),
-				Box::new(Coin::new()),
-				Box::new(FaultyWaterGun::new()),
-				Box::new(FaultyWaterGun::new()),
-				Box::new(Shield::new()),
-				Box::new(Shield::new()),
+			let all_items = vec![
+				Item {
+					name: "Apple".to_string(),
+					id: Uuid::new_v4(),
+					description: "Heal 5-20 HP.".to_string(),
+					icon: '🍎'.into(),
+					cb: Box::new(|item, user, battle, _| {
+						let healing = rand::thread_rng().gen_range(5..=20);
+						let healing = user.heal(healing);
+						battle.log.add(Entry::Item(item.icon.clone(), format!("{} ate an apple and healed for {} health.", user.name(), healing)));
+					}),
+				},
+				Item {
+					name: "Coin".to_string(),
+					id: Uuid::new_v4(),
+					description: "50/50 chance to heal/hurt your opponent for 20-35 health.".to_string(),
+					icon: '🪙'.into(),
+					cb: Box::new(|item, user, battle, opponent| {
+						let mut rng = rand::thread_rng();
+						let heal = rng.gen();
+						let health = rng.gen_range(20..=35);
+						if heal {
+							let healing = opponent.heal(health);
+							battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} healing against {}.", user.name(), healing, opponent.name())));
+						} else {
+							let damage = opponent.damage(health, 0);
+							battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} damage against {}.", user.name(), damage, opponent.name())))
+						}
+					}),
+				},
+				Item {
+					name: "Faulty Water Gun".to_string(),
+					id: Uuid::new_v4(),
+					description: "90% chance to deal 30-40 damage; 10% chance to backfire for 50-60 damage".to_string(),
+					icon: '🔫'.into(),
+					cb: Box::new(|item, user, battle, opponent| {
+						let mut rng = rand::thread_rng();
+						let opponent_damage = rng.gen_range(30..=40);
+						let backfire = rng.gen_ratio(1, 10);
+						let self_damage = rng.gen_range(50..=60);
+
+						if backfire {
+							let damage = user.damage(self_damage, 0);
+							battle.log.add(Entry::Item(item.icon.clone(), format!("{}'s water gun backfired, dealing {} damage to themselves.", user.name(), damage)));
+						} else {
+							let damage = opponent.damage(opponent_damage, 0);
+							battle.log.add(Entry::Item(item.icon.clone(), format!("{} splashed {} with a water gun, dealing {} damage.", user.name(), opponent.name(), damage)));
+						}
+					}),
+				},
+				Item {
+					name: "Shield".to_string(),
+					id: Uuid::new_v4(),
+					description: "Gain 5-10 armor.".to_string(),
+					icon: '🛡'.into(),
+					cb: Box::new(|item, user, battle, _| {
+						let armor = rand::thread_rng().gen_range(5..=10);
+						user.add_armor(armor);
+						battle.log.add(Entry::Item(item.icon.clone(), format!("{} equipped a shield, gaining {} armor.", user.name(), armor)));
+					}),
+				},
 			];
 			all_items
 			 	.into_iter()
 				.choose_multiple(&mut rand::thread_rng(), 3)
 				.into_iter()
 				.fold(HashMap::new(), |mut acc, item| {
-					acc.insert(item.id().clone(), item);
+					acc.insert(item.id.clone(), item);
 					acc
 				})
 		};
 
 		let weapon = {
-			let all_weapons: Vec<Box<dyn Weapon>> = vec![
-				Box::new(Sword::new()),
-				Box::new(Spear::new()),
-				Box::new(Hammer::new()),
+			let all_weapons = vec![
+				Weapon {
+					name: "Dagger".to_string(),
+					icon: '🗡'.into(),
+					damage_range: 10..=15,
+					crit_ratio: (5, 100),
+					crit_multiplier: 3,
+					..Default::default()
+				},
+				Weapon {
+					name: "Hammer".to_string(),
+					icon: '🔨'.into(),
+					damage_range: 15..=30,
+					..Default::default()
+				},
+				Weapon {
+					name: "Spear".to_string(),
+					icon: '⚔'.into(),
+					pierce: 5,
+					..Default::default()
+				},
+				Weapon {
+					name: "Sword".to_string(),
+					icon: '⚔'.into(),
+					crit_ratio: (7, 100),
+					..Default::default()
+				},
 			];
 			all_weapons
 			 	.into_iter()
@@ -91,12 +148,11 @@ impl<'a> Player<'a> {
 			id: Uuid::new_v4(),
 			is_p1,
 			ctx,
-			battle: None,
-			health: AtomicUsize::new(100),
+			health: 100,
 			max_health: 100,
 			weapon,
 			items,
-			armor: AtomicUsize::new(0),
+			armor: 0,
 		}
 	}
 
@@ -108,34 +164,24 @@ impl<'a> Player<'a> {
 		format!("<@{}>", self.user.id)
 	}
 
-	async fn act(&mut self) -> Result<(), Error> {
-		let battle = self.battle.as_ref().ok_or("Battle is unset.")?.upgrade().ok_or("Battle is over.")?;
-
+	async fn act(&mut self, battle: &mut Battle<'_>, opponent: &mut dyn Battler) -> Result<(), Error> {
 		loop {
-			{
-				let mut message = battle.message.lock().await;
-				let log = battle.log.lock().await;
+			let self_display = self.info().display().await;
+			let opponent_display = opponent.info().display().await;
 
-				if self.is_p1 {
-					let p1_display = self.info().display().await;
-					let p2_display = battle.p2.lock().await.info().display().await;
-
-					message.edit(self.ctx.discord(), |m|
-						m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
-							.components(|c| create_battle_components(c, false, self.items.is_empty()))
-					).await?;
-				} else {
-					let p1_display = battle.p1.lock().await.info().display().await;
-					let p2_display = self.info().display().await;
-
-					message.edit(self.ctx.discord(), |m|
-						m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, battle.p1_turn.load(Ordering::Relaxed), &log))
-							.components(|c| create_battle_components(c, false, self.items.is_empty()))
-					).await?;
-				}
+			if self.is_p1 {
+				battle.message.edit(self.ctx.discord(), |m|
+					m.embed(|e| create_battle_embed(e, &self_display, &opponent_display, battle.p1_turn, &battle.log))
+						.components(|c| create_battle_components(c, false, self.items.is_empty()))
+				).await?;
+			} else {
+				battle.message.edit(self.ctx.discord(), |m|
+					m.embed(|e| create_battle_embed(e, &opponent_display, &self_display, battle.p1_turn, &battle.log))
+						.components(|c| create_battle_components(c, false, self.items.is_empty()))
+				).await?;
 			}
 
-			let interaction = battle.message.lock().await
+			let interaction = battle.message
 				.await_component_interaction(self.ctx.discord())
 				.author_id(self.user.id)
 				.await;
@@ -144,10 +190,9 @@ impl<'a> Player<'a> {
 				m.defer(self.ctx.discord()).await?;
 
 				match &*m.data.custom_id {
-					"attack" => self.weapon.attack(self, &battle, self.is_p1).await?,
+					"attack" => self.weapon.attack(self, battle, opponent),
 					"surrender" => {
-						let mut log = battle.log.lock().await;
-						log.add(Entry::Surrender(self.name().clone()));
+						battle.log.add(Entry::Surrender(self.name().clone()));
 						self.set_health(0);
 					},
 					"item" => {
@@ -155,19 +200,18 @@ impl<'a> Player<'a> {
 							continue;
 						}
 
-						battle.message.lock().await.edit(self.ctx.discord(), |m|
+						battle.message.edit(self.ctx.discord(), |m|
 							m.components(|c| create_battle_components(c, true, true))
 						).await?;
 
-						if !self.item().await? {
+						if !self.item(battle, opponent).await? {
 							continue;
 						}
 					},
 					other => return Err(format!("Unknown ID {other}.").into()),
 				}
 			} else {
-				let mut log = battle.log.lock().await;
-				log.add(Entry::Timeout(self.name().clone()));
+				battle.log.add(Entry::Timeout(self.name().clone()));
 			}
 
 			break;
@@ -176,7 +220,7 @@ impl<'a> Player<'a> {
 		Ok(())
 	}
 
-	async fn item(&mut self) -> Result<bool, Error> {
+	async fn item(&mut self, battle: &mut Battle<'_>, opponent: &mut dyn Battler) -> Result<bool, Error> {
 		if self.items.is_empty() {
 			return Ok(false);
 		}
@@ -215,13 +259,10 @@ impl<'a> Player<'a> {
 				"item" => {
 					let item_id = Uuid::parse_str(m.data.values.get(0).ok_or("No values received.")?)?;
 					let item = self.items
-						.get(&item_id)
+						.remove(&item_id)
 						.ok_or(format!("Item ID {} not found.", item_id))?;
 
-					let battle = self.battle.as_ref().ok_or("Battle is unset.")?.upgrade().ok_or("Battle is over.")?;
-
-					item.use_item(self, &battle, self.is_p1).await?;
-					self.items.remove(&item_id);
+					item.use_item(self, battle, opponent);
 				},
 				"back" => {
 					return Ok(false);
@@ -237,11 +278,7 @@ impl<'a> Player<'a> {
 }
 
 #[async_trait]
-impl<'a> Battler<'a> for Player<'a> {
-	fn set_battle(&mut self, battle: Weak<Battle<'a>>) {
-		self.battle = Some(battle);
-	}
-
+impl<'a> Battler for Player<'a> {
 	fn user_id(&self) -> Option<UserId> {
 		Some(self.user.id)
 	}
@@ -255,33 +292,25 @@ impl<'a> Battler<'a> for Player<'a> {
 		self.user.avatar_url()
 	}
 
-	async fn act(&mut self) -> Result<(), Error> {
-		self.act().await
+	async fn act(&mut self, battle: &mut Battle, opponent: &mut dyn Battler) -> Result<(), Error> {
+		self.act(battle, opponent).await
 	}
 
 	fn health(&self) -> usize {
-		self.health.load(Ordering::Relaxed)
+		self.health
 	}
 	fn max_health(&self) -> usize {
 		self.max_health
 	}
-	fn damage(&self, damage: usize, pierce: usize) -> usize {
-		let health = self.health.load(Ordering::Relaxed);
-		let armor = self.armor.load(Ordering::Relaxed);
-
-		let damage = damage.checked_sub(armor.checked_sub(pierce).unwrap_or(0)).unwrap_or(0).min(health);
-		self.health.store(health - damage, Ordering::Relaxed);
-		damage
-	}
-	fn heal(&self, healing: usize) -> usize {
-		let health = self.health.load(Ordering::Relaxed);
-		let healing = healing.min(self.max_health - health);
-		self.health.store(health + healing, Ordering::Relaxed);
-		healing
+	fn armor(&self) -> usize {
+		self.armor
 	}
 
-	fn set_health(&mut self, target: usize) {
-		self.health.store(target.clamp(0, self.max_health), Ordering::Relaxed);
+	fn set_health(&mut self, health: usize) {
+		self.health = health.clamp(0, self.max_health);
+	}
+	fn set_armor(&mut self, armor: usize) {
+		self.armor = armor;
 	}
 
 	fn info(&self) -> BattlerInfo {
@@ -291,8 +320,8 @@ impl<'a> Battler<'a> for Player<'a> {
 			icon: self.icon(),
 			health: self.health(),
 			max_health: self.max_health(),
-			weapon: (self.weapon.icon(), self.weapon.name().to_string()),
-			armor: self.armor.load(Ordering::Relaxed),
+			weapon: (self.weapon.icon.clone(), self.weapon.name.clone()),
+			armor: self.armor,
 		}
 	}
 }
