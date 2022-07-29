@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 use poise::serenity_prelude::{ButtonStyle, CreateComponents, Emoji, Guild, ReactionType, read_image};
 
-async fn get_or_create_emoji(emojis: &Vec<Emoji>, name: &str, guild: &Guild, ctx: Context<'_>) -> Result<Emoji, Error> {
-	if let Some(emoji) = emojis.iter().filter(|emoji| emoji.name == name).next() {
+async fn get_or_create_emoji(emojis: &[Emoji], name: &str, guild: &Guild, ctx: Context<'_>) -> Result<Emoji, Error> {
+	if let Some(emoji) = emojis.iter().find(|emoji| emoji.name == name) {
 		Ok(emoji.clone())
 	} else {
 		Ok(guild.create_emoji(ctx.discord(), name, &read_image(format!("./img/{}.png", name))?).await?)
@@ -18,7 +18,7 @@ async fn create_health_bar(ctx: Context<'_>, health: usize, max_health: usize) -
 	let percent_health_remaining = health as f64 / max_health as f64;
 	let full_bar_emojis = if percent_health_remaining == 0.0 {
 		0
-	} else if percent_health_remaining == 1.0 {
+	} else if (percent_health_remaining - 1.0).abs() < f64::EPSILON {
 		HEALTHBAR_LENGTH
 	} else {
 		((HEALTHBAR_LENGTH as f64 * percent_health_remaining).floor() as usize).clamp(1, HEALTHBAR_LENGTH - 1)

@@ -34,7 +34,7 @@ pub trait Battler: Send + Sync {
 
 impl<'a> dyn Battler + 'a {
 	fn damage(&mut self, damage: usize, pierce: usize) -> usize {
-		let damage = damage.checked_sub(self.armor().checked_sub(pierce).unwrap_or(0)).unwrap_or(0).min(self.health());
+		let damage = damage.saturating_sub(self.armor().saturating_sub(pierce)).min(self.health());
 		self.set_health(self.health() - damage);
 		damage
 	}
@@ -45,7 +45,7 @@ impl<'a> dyn Battler + 'a {
 	}
 
 	fn add_armor(&mut self, armor: usize) {
-		self.set_armor(self.armor().checked_add(armor).unwrap_or(usize::MAX));
+		self.set_armor(self.armor().saturating_add(armor));
 	}
 }
 
