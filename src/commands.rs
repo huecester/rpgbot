@@ -14,7 +14,7 @@ pub async fn duel(
     ctx: Context<'_>,
     #[description = "User to duel."] opponent: User,
 ) -> Result<(), Error> {
-	let p1 = ctx.author().clone();
+    let p1 = ctx.author().clone();
 
     if opponent.bot {
         ctx.send(|m| m.content("You cannot challenge bots to a duel.").ephemeral(true)).await?;
