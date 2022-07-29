@@ -92,7 +92,7 @@ fn create_weapons() -> Vec<Weapon> {
 			name: "Dagger".to_string(),
 			icon: '🗡'.into(),
 			damage_range: 10..=15,
-			crit_ratio: (5, 100),
+			crit_ratio: 5.0 / 100.0,
 			crit_multiplier: 3,
 			..Default::default()
 		},
@@ -111,7 +111,7 @@ fn create_weapons() -> Vec<Weapon> {
 		Weapon {
 			name: "Sword".to_string(),
 			icon: '⚔'.into(),
-			crit_ratio: (7, 100),
+			crit_ratio: 7.0 / 100.0,
 			..Default::default()
 		},
 	]
@@ -176,18 +176,20 @@ impl<'a> Player<'a> {
 			let opponent_display = opponent.info().display().await;
 
 			if self.is_p1 {
-				battle.message.edit(self.ctx.discord(), |m|
+				battle.reply.edit(self.ctx, |m|
 					m.embed(|e| create_battle_embed(e, &self_display, &opponent_display, battle.p1_turn, &battle.log))
 						.components(|c| create_battle_components(c, false, self.items.is_empty()))
 				).await?;
 			} else {
-				battle.message.edit(self.ctx.discord(), |m|
+				battle.reply.edit(self.ctx, |m|
 					m.embed(|e| create_battle_embed(e, &opponent_display, &self_display, battle.p1_turn, &battle.log))
 						.components(|c| create_battle_components(c, false, self.items.is_empty()))
 				).await?;
 			}
 
-			let interaction = battle.message
+			let interaction = battle.reply
+				.message()
+				.await?
 				.await_component_interaction(self.ctx.discord())
 				.author_id(self.user.id)
 				.await;
@@ -206,7 +208,7 @@ impl<'a> Player<'a> {
 							continue;
 						}
 
-						battle.message.edit(self.ctx.discord(), |m|
+						battle.reply.edit(self.ctx, |m|
 							m.components(|c| create_battle_components(c, true, true))
 						).await?;
 
@@ -231,7 +233,7 @@ impl<'a> Player<'a> {
 			return Ok(false);
 		}
 
-		let message = self.ctx.send(|m|
+		let handle = self.ctx.send(|m|
 			m.content("Select an item:")
 				.components(|c|
 					c.create_action_row(|r|
@@ -249,7 +251,8 @@ impl<'a> Player<'a> {
 						)
 					)
 				)
-		).await?.message().await?;
+		).await?;
+		let message = handle.message().await?;
 
 		let interaction = message
 			.await_component_interaction(self.ctx.discord())
