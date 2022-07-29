@@ -9,8 +9,8 @@ use prelude::*;
 
 use std::collections::HashSet;
 use poise::{
-	BoxFuture,
-	serenity_prelude as serenity,
+    BoxFuture,
+    serenity_prelude as serenity,
 };
 
 pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
@@ -19,9 +19,9 @@ pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
         U: Into<u64> + Send + Sync,
 {
     let mut owners = HashSet::new();
-	for id in owner_ids {
-		owners.insert(serenity::UserId(id.into()));
-	}
+    for id in owner_ids {
+        owners.insert(serenity::UserId(id.into()));
+    }
 
     let framework = poise::Framework::build()
         .options(poise::FrameworkOptions{
