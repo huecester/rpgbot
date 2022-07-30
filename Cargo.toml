@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.56"
+diesel = { version = "1.4.8", features = [ "postgres" ] }
 dotenv = "0.15.0"
 poise = "0.3.0"
 rand = "0.8.5"

@@ -1,6 +1,12 @@
+#[macro_use]
+extern crate diesel;
+
+mod battle;
 mod commands;
-pub mod battle;
+
+pub mod model;
 pub mod prelude;
+pub mod schema;
 pub mod types;
 pub mod util;
 
