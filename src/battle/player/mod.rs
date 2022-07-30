@@ -4,7 +4,10 @@ mod weapon;
 
 pub use util::create_battle_embed;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	model::{QueryItem, QueryWeapon},
+};
 use super::{
 	Battle,
 	Battler,
@@ -15,8 +18,15 @@ use item::Item;
 use util::create_battle_components;
 use weapon::Weapon;
 
-use std::collections::HashMap;
+use std::{
+	collections::HashMap,
+	env,
+};
 use async_trait::async_trait;
+use diesel::{
+	prelude::*,
+	pg::PgConnection,
+};
 use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::prelude::*;
 use uuid::Uuid;
@@ -130,26 +140,39 @@ pub struct Player<'a> {
 }
 
 impl<'a> Player<'a> {
-	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
-		let items = {
-			create_items()
-				 .into_iter()
-				.choose_multiple(&mut rand::thread_rng(), 3)
-				.into_iter()
-				.fold(HashMap::new(), |mut acc, item| {
-					acc.insert(item.id, item);
-					acc
-				})
+	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Result<Self, Error> {
+		let (items, weapons) = {
+			let database_url = env::var("DATABASE_URL")?;
+			let conn = PgConnection::establish(&database_url)?;
+
+			let items: Result<Vec<Item>, Error> = {
+				use crate::schema::items::dsl::*;
+				items.load::<QueryItem>(&conn)?.into_iter().map(|query_item| Item::try_from(query_item)).collect()
+			};
+
+			let weapons: Result<Vec<Weapon>, Error> = {
+				use crate::schema::weapons::dsl::*;
+				weapons.load::<QueryWeapon>(&conn)?.into_iter().map(|query_weapon| Weapon::try_from(query_weapon)).collect()
+			};
+
+			(items?, weapons?)
 		};
 
-		let weapon = {
-			create_weapons()
-				 .into_iter()
-				.choose(&mut rand::thread_rng())
-				.unwrap()
-		};
+		let items = items
+			.into_iter()
+			.choose_multiple(&mut rand::thread_rng(), 3)
+			.into_iter()
+			.fold(HashMap::new(), |mut acc, item| {
+				acc.insert(item.id, item);
+				acc
+			});
 
-		Self {
+		let weapon = weapons
+			.into_iter()
+			.choose(&mut rand::thread_rng())
+			.ok_or("No weapons found.")?;
+
+		Ok(Self {
 			user,
 			id: Uuid::new_v4(),
 			is_p1,
@@ -159,7 +182,7 @@ impl<'a> Player<'a> {
 			weapon,
 			items,
 			armor: 0,
-		}
+		})
 	}
 
 	pub fn user(&self) -> &User {

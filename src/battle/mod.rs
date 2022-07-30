@@ -72,8 +72,8 @@ impl<'a> Battle<'a> {
 	}
 
 	pub async fn send_invite(ctx: Context<'a>, u1: User, u2: User) -> Result<(), Error> {
-		let mut p1 = Player::new(u1, ctx, true);
-		let mut p2 = Player::new(u2, ctx, false);
+		let mut p1 = Player::new(u1, ctx, true)?;
+		let mut p2 = Player::new(u2, ctx, false)?;
 
 		let p1_display = p1.info().display().await;
 		let p2_display = p2.info().display().await;

@@ -1,21 +1,21 @@
-use std::ops::RangeInclusive;
+use std::ops::Bound;
 
 #[derive(Queryable)]
-pub struct Item {
-	pub id: usize,
+pub struct QueryItem {
+	pub id: i32,
 	pub name: String,
 	pub description: String,
-	pub icon: char,
+	pub icon: String,
 	pub lua: String,
 }
 
 #[derive(Queryable)]
-pub struct Weapon {
-	pub id: usize,
+pub struct QueryWeapon {
+	pub id: i32,
 	pub name: String,
-	pub icon: char,
-	pub damage_range: Option<RangeInclusive<usize>>,
+	pub icon: String,
+	pub damage_range: Option<(Bound<i32>, Bound<i32>)>,
 	pub crit_ratio: Option<f64>,
-	pub crit_multiplier: Option<usize>,
-	pub pierce: Option<usize>,
+	pub crit_multiplier: Option<i32>,
+	pub pierce: Option<i32>,
 }
