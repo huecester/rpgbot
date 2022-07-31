@@ -10,7 +10,10 @@ use player::create_battle_embed;
 use util::{BattlerInfo, create_invite_action_row};
 
 use async_trait::async_trait;
-use poise::serenity_prelude::{Message, User, UserId};
+use poise::{
+	ReplyHandle,
+	serenity_prelude::{User, UserId},
+};
 use uuid::Uuid;
 
 #[async_trait]
@@ -52,37 +55,39 @@ impl<'a> dyn Battler + 'a {
 pub struct Battle<'a> {
 	id: Uuid,
 	ctx: Context<'a>,
-	message: Message,
+	reply: ReplyHandle<'a>,
 	p1_turn: bool,
 	log: Log,
 }
 
 impl<'a> Battle<'a> {
-	fn new(ctx: Context<'a>, message: Message) -> Self {
+	fn new(ctx: Context<'a>, reply: ReplyHandle<'a>) -> Self {
 		Self {
 			id: Uuid::new_v4(),
 			ctx,
-			message,
+			reply,
 			p1_turn: rand::random(),
 			log: Log::new(),
 		}
 	}
 
 	pub async fn send_invite(ctx: Context<'a>, u1: User, u2: User) -> Result<(), Error> {
-		let mut p1 = Player::new(u1, ctx, true);
-		let mut p2 = Player::new(u2, ctx, false);
+		let mut p1 = Player::new(u1, ctx, true)?;
+		let mut p2 = Player::new(u2, ctx, false)?;
 
 		let p1_display = p1.info().display().await;
 		let p2_display = p2.info().display().await;
 
-		let mut message = ctx.send(|m|
+		let reply = ctx.send(|m|
 			m.embed(|e| create_battle_embed(e, &p1_display, &p2_display, true, &Log::new())
 				.title("⚔ Duel Invitation")
 				.description(format!("{} challenged {} to a duel!", &p1.mention(), &p2.mention()))
 			).components(|c| create_invite_action_row(c, false))
-		).await?.message().await?;
+		).await?;
 
-		let interaction = message
+		let interaction = reply
+			.message()
+			.await?
 			.await_component_interaction(ctx.discord())
 			.author_id(p2.user().id)
 			.await;
@@ -93,16 +98,16 @@ impl<'a> Battle<'a> {
 			match &*m.data.custom_id {
 				"fight" => {
 					if ctx.data().check_for_user_in_battle(p2.user()) {
-						message.edit(ctx.discord(), |m| m.components(|c| c)).await?;
+						reply.edit(ctx, |m| m.components(|c| c)).await?;
 						ctx.send(|c| c.content("You cannot be in two battles at once.").ephemeral(true)).await?;
 						return Ok(());
 					}
-					let mut battle = Battle::new(ctx, message);
+					let mut battle = Battle::new(ctx, reply);
 					battle.start(&mut p1 as &mut dyn Battler, &mut p2 as &mut dyn Battler).await
 				}
 				"run" => {
-					message.edit(ctx.discord(), |m| m.components(|c| c)).await?;
-					message.reply(ctx.discord(), format!("{} ran away.", p2.mention())).await?;
+					reply.edit(ctx, |m| m.components(|c| c)).await?;
+					reply.message().await?.reply(ctx.discord(), format!("{} ran away.", p2.mention())).await?;
 					Ok(())
 				},
 				other => Err(format!("Unknown button ID {other}.").into()),
@@ -134,7 +139,7 @@ impl<'a> Battle<'a> {
 		let winner = p1.health() > 0 && p2.health() == 0 || p2.health() > 0 && p1.health() == 0;
 		let p1_win = winner && p2.health() == 0;
 
-		self.message.edit(self.ctx.discord(), |m|
+		self.reply.edit(self.ctx, |m|
 			if winner {
 				m.embed(|e| {
 					let e = base_embed(e)

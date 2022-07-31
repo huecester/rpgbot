@@ -4,7 +4,10 @@ mod weapon;
 
 pub use util::create_battle_embed;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	model::{QueryItem, QueryWeapon},
+};
 use super::{
 	Battle,
 	Battler,
@@ -15,107 +18,18 @@ use item::Item;
 use util::create_battle_components;
 use weapon::Weapon;
 
-use std::collections::HashMap;
+use std::{
+	collections::HashMap,
+	env,
+};
 use async_trait::async_trait;
+use diesel::{
+	prelude::*,
+	pg::PgConnection,
+};
 use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::prelude::*;
 use uuid::Uuid;
-
-fn create_items() -> Vec<Item> {
-	vec![
-		Item {
-			name: "Apple".to_string(),
-			id: Uuid::new_v4(),
-			description: "Heal 5-20 HP.".to_string(),
-			icon: '🍎'.into(),
-			cb: Box::new(|item, user, battle, _| {
-				let healing = rand::thread_rng().gen_range(5..=20);
-				let healing = user.heal(healing);
-				battle.log.add(Entry::Item(item.icon.clone(), format!("{} ate an apple and healed for {} health.", user.name(), healing)));
-			}),
-		},
-		Item {
-			name: "Coin".to_string(),
-			id: Uuid::new_v4(),
-			description: "50/50 chance to heal/hurt your opponent for 20-35 health.".to_string(),
-			icon: '🪙'.into(),
-			cb: Box::new(|item, user, battle, opponent| {
-				let mut rng = rand::thread_rng();
-				let heal = rng.gen();
-				let health = rng.gen_range(20..=35);
-				if heal {
-					let healing = opponent.heal(health);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} healing against {}.", user.name(), healing, opponent.name())));
-				} else {
-					let damage = opponent.damage(health, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} damage against {}.", user.name(), damage, opponent.name())));
-				}
-			}),
-		},
-		Item {
-			name: "Faulty Water Gun".to_string(),
-			id: Uuid::new_v4(),
-			description: "90% chance to deal 30-40 damage; 10% chance to backfire for 50-60 damage".to_string(),
-			icon: '🔫'.into(),
-			cb: Box::new(|item, user, battle, opponent| {
-				let mut rng = rand::thread_rng();
-				let opponent_damage = rng.gen_range(30..=40);
-				let backfire = rng.gen_ratio(1, 10);
-				let self_damage = rng.gen_range(50..=60);
-
-				if backfire {
-					let damage = user.damage(self_damage, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{}'s water gun backfired, dealing {} damage to themselves.", user.name(), damage)));
-				} else {
-					let damage = opponent.damage(opponent_damage, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} splashed {} with a water gun, dealing {} damage.", user.name(), opponent.name(), damage)));
-				}
-			}),
-		},
-		Item {
-			name: "Shield".to_string(),
-			id: Uuid::new_v4(),
-			description: "Gain 5-10 armor.".to_string(),
-			icon: '🛡'.into(),
-			cb: Box::new(|item, user, battle, _| {
-				let armor = rand::thread_rng().gen_range(5..=10);
-				user.add_armor(armor);
-				battle.log.add(Entry::Item(item.icon.clone(), format!("{} equipped a shield, gaining {} armor.", user.name(), armor)));
-			}),
-		},
-	]
-}
-
-fn create_weapons() -> Vec<Weapon> {
-	vec![
-		Weapon {
-			name: "Dagger".to_string(),
-			icon: '🗡'.into(),
-			damage_range: 10..=15,
-			crit_ratio: (5, 100),
-			crit_multiplier: 3,
-			..Default::default()
-		},
-		Weapon {
-			name: "Hammer".to_string(),
-			icon: '🔨'.into(),
-			damage_range: 15..=30,
-			..Default::default()
-		},
-		Weapon {
-			name: "Spear".to_string(),
-			icon: '⚔'.into(),
-			pierce: 5,
-			..Default::default()
-		},
-		Weapon {
-			name: "Sword".to_string(),
-			icon: '⚔'.into(),
-			crit_ratio: (7, 100),
-			..Default::default()
-		},
-	]
-}
 
 pub struct Player<'a> {
 	user: User,
@@ -130,26 +44,40 @@ pub struct Player<'a> {
 }
 
 impl<'a> Player<'a> {
-	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Self {
-		let items = {
-			create_items()
-				 .into_iter()
-				.choose_multiple(&mut rand::thread_rng(), 3)
-				.into_iter()
-				.fold(HashMap::new(), |mut acc, item| {
-					acc.insert(item.id, item);
-					acc
-				})
+	pub fn new(user: User, ctx: Context<'a>, is_p1: bool) -> Result<Self, Error> {
+		let (items, weapons) = {
+			let database_url = env::var("DATABASE_URL")?;
+			let conn = PgConnection::establish(&database_url)?;
+
+			let items: Result<Vec<Item>, Error> = {
+				use crate::schema::items::dsl::*;
+				items.load::<QueryItem>(&conn)?.into_iter().map(|query_item| Item::try_from(query_item)).collect()
+			};
+
+			let weapons: Result<Vec<Weapon>, Error> = {
+				use crate::schema::weapons::dsl::*;
+				weapons.load::<QueryWeapon>(&conn)?.into_iter().map(|query_weapon| Weapon::try_from(query_weapon)).collect()
+			};
+
+			(items?, weapons?)
 		};
 
-		let weapon = {
-			create_weapons()
-				 .into_iter()
-				.choose(&mut rand::thread_rng())
-				.unwrap()
-		};
+		let items = items
+			.into_iter()
+			.flat_map(|item| vec![item.clone(), item])
+			.choose_multiple(&mut rand::thread_rng(), 3)
+			.into_iter()
+			.fold(HashMap::new(), |mut acc, item| {
+				acc.insert(item.id, item);
+				acc
+			});
 
-		Self {
+		let weapon = weapons
+			.into_iter()
+			.choose(&mut rand::thread_rng())
+			.ok_or("No weapons found.")?;
+
+		Ok(Self {
 			user,
 			id: Uuid::new_v4(),
 			is_p1,
@@ -159,7 +87,7 @@ impl<'a> Player<'a> {
 			weapon,
 			items,
 			armor: 0,
-		}
+		})
 	}
 
 	pub fn user(&self) -> &User {
@@ -176,18 +104,20 @@ impl<'a> Player<'a> {
 			let opponent_display = opponent.info().display().await;
 
 			if self.is_p1 {
-				battle.message.edit(self.ctx.discord(), |m|
+				battle.reply.edit(self.ctx, |m|
 					m.embed(|e| create_battle_embed(e, &self_display, &opponent_display, battle.p1_turn, &battle.log))
 						.components(|c| create_battle_components(c, false, self.items.is_empty()))
 				).await?;
 			} else {
-				battle.message.edit(self.ctx.discord(), |m|
+				battle.reply.edit(self.ctx, |m|
 					m.embed(|e| create_battle_embed(e, &opponent_display, &self_display, battle.p1_turn, &battle.log))
 						.components(|c| create_battle_components(c, false, self.items.is_empty()))
 				).await?;
 			}
 
-			let interaction = battle.message
+			let interaction = battle.reply
+				.message()
+				.await?
 				.await_component_interaction(self.ctx.discord())
 				.author_id(self.user.id)
 				.await;
@@ -206,7 +136,7 @@ impl<'a> Player<'a> {
 							continue;
 						}
 
-						battle.message.edit(self.ctx.discord(), |m|
+						battle.reply.edit(self.ctx, |m|
 							m.components(|c| create_battle_components(c, true, true))
 						).await?;
 
@@ -231,7 +161,7 @@ impl<'a> Player<'a> {
 			return Ok(false);
 		}
 
-		let message = self.ctx.send(|m|
+		let handle = self.ctx.send(|m|
 			m.content("Select an item:")
 				.components(|c|
 					c.create_action_row(|r|
@@ -249,7 +179,8 @@ impl<'a> Player<'a> {
 						)
 					)
 				)
-		).await?.message().await?;
+		).await?;
+		let message = handle.message().await?;
 
 		let interaction = message
 			.await_component_interaction(self.ctx.discord())
@@ -268,7 +199,7 @@ impl<'a> Player<'a> {
 						.remove(&item_id)
 						.ok_or(format!("Item ID {} not found.", item_id))?;
 
-					item.use_item(self, battle, opponent);
+					item.use_item(self, battle, opponent)?;
 				},
 				"back" => {
 					return Ok(false);

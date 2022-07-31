@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.56"
+diesel = { version = "1.4.8", features = [ "postgres" ] }
 dotenv = "0.15.0"
-poise = "0.2.2"
+poise = "0.3.0"
 rand = "0.8.5"
+rlua = "0.19.4"
 tokio = { version = "1.20.0", features = [ "rt-multi-thread" ] }
 uuid = { version = "1.1.2", features = [ "v4", "fast-rng", "macro-diagnostics" ] }

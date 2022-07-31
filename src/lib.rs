@@ -1,6 +1,12 @@
+#[macro_use]
+extern crate diesel;
+
+mod battle;
 mod commands;
-pub mod battle;
+
+pub mod model;
 pub mod prelude;
+pub mod schema;
 pub mod types;
 pub mod util;
 
@@ -10,6 +16,7 @@ use prelude::*;
 use std::collections::HashSet;
 use poise::{
 	BoxFuture,
+	Framework,
 	serenity_prelude as serenity,
 };
 
@@ -23,7 +30,7 @@ pub async fn start<T, U>(token: T, owner_ids: Vec<U>) -> Result<(), Error>
 		owners.insert(serenity::UserId(id.into()));
 	}
 
-	let framework = poise::Framework::build()
+	let framework = Framework::builder()
 		.options(poise::FrameworkOptions{
 			commands: vec![duel(), register()],
 			owners,

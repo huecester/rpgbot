@@ -1,0 +1,8 @@
+-- Your SQL goes here
+CREATE TABLE IF NOT EXISTS items (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL,
+	description TEXT NOT NULL,
+	icon CHAR NOT NULL,
+	lua TEXT NOT NULL
+)
