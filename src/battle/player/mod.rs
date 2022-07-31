@@ -31,102 +31,6 @@ use poise::serenity_prelude::{ButtonStyle, User, UserId };
 use rand::prelude::*;
 use uuid::Uuid;
 
-fn create_items() -> Vec<Item> {
-	vec![
-		Item {
-			name: "Apple".to_string(),
-			id: Uuid::new_v4(),
-			description: "Heal 5-20 HP.".to_string(),
-			icon: '🍎'.into(),
-			cb: Box::new(|item, user, battle, _| {
-				let healing = rand::thread_rng().gen_range(5..=20);
-				let healing = user.heal(healing);
-				battle.log.add(Entry::Item(item.icon.clone(), format!("{} ate an apple and healed for {} health.", user.name(), healing)));
-			}),
-		},
-		Item {
-			name: "Coin".to_string(),
-			id: Uuid::new_v4(),
-			description: "50/50 chance to heal/hurt your opponent for 20-35 health.".to_string(),
-			icon: '🪙'.into(),
-			cb: Box::new(|item, user, battle, opponent| {
-				let mut rng = rand::thread_rng();
-				let heal = rng.gen();
-				let health = rng.gen_range(20..=35);
-				if heal {
-					let healing = opponent.heal(health);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} healing against {}.", user.name(), healing, opponent.name())));
-				} else {
-					let damage = opponent.damage(health, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} flipped {} damage against {}.", user.name(), damage, opponent.name())));
-				}
-			}),
-		},
-		Item {
-			name: "Faulty Water Gun".to_string(),
-			id: Uuid::new_v4(),
-			description: "90% chance to deal 30-40 damage; 10% chance to backfire for 50-60 damage".to_string(),
-			icon: '🔫'.into(),
-			cb: Box::new(|item, user, battle, opponent| {
-				let mut rng = rand::thread_rng();
-				let opponent_damage = rng.gen_range(30..=40);
-				let backfire = rng.gen_ratio(1, 10);
-				let self_damage = rng.gen_range(50..=60);
-
-				if backfire {
-					let damage = user.damage(self_damage, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{}'s water gun backfired, dealing {} damage to themselves.", user.name(), damage)));
-				} else {
-					let damage = opponent.damage(opponent_damage, 0);
-					battle.log.add(Entry::Item(item.icon.clone(), format!("{} splashed {} with a water gun, dealing {} damage.", user.name(), opponent.name(), damage)));
-				}
-			}),
-		},
-		Item {
-			name: "Shield".to_string(),
-			id: Uuid::new_v4(),
-			description: "Gain 5-10 armor.".to_string(),
-			icon: '🛡'.into(),
-			cb: Box::new(|item, user, battle, _| {
-				let armor = rand::thread_rng().gen_range(5..=10);
-				user.add_armor(armor);
-				battle.log.add(Entry::Item(item.icon.clone(), format!("{} equipped a shield, gaining {} armor.", user.name(), armor)));
-			}),
-		},
-	]
-}
-
-fn create_weapons() -> Vec<Weapon> {
-	vec![
-		Weapon {
-			name: "Dagger".to_string(),
-			icon: '🗡'.into(),
-			damage_range: 10..=15,
-			crit_ratio: 5.0 / 100.0,
-			crit_multiplier: 3,
-			..Default::default()
-		},
-		Weapon {
-			name: "Hammer".to_string(),
-			icon: '🔨'.into(),
-			damage_range: 15..=30,
-			..Default::default()
-		},
-		Weapon {
-			name: "Spear".to_string(),
-			icon: '⚔'.into(),
-			pierce: 5,
-			..Default::default()
-		},
-		Weapon {
-			name: "Sword".to_string(),
-			icon: '⚔'.into(),
-			crit_ratio: 7.0 / 100.0,
-			..Default::default()
-		},
-	]
-}
-
 pub struct Player<'a> {
 	user: User,
 	id: Uuid,
@@ -160,6 +64,7 @@ impl<'a> Player<'a> {
 
 		let items = items
 			.into_iter()
+			.flat_map(|item| vec![item.clone(), item])
 			.choose_multiple(&mut rand::thread_rng(), 3)
 			.into_iter()
 			.fold(HashMap::new(), |mut acc, item| {
@@ -294,7 +199,7 @@ impl<'a> Player<'a> {
 						.remove(&item_id)
 						.ok_or(format!("Item ID {} not found.", item_id))?;
 
-					item.use_item(self, battle, opponent);
+					item.use_item(self, battle, opponent)?;
 				},
 				"back" => {
 					return Ok(false);

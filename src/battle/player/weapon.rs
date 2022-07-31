@@ -15,6 +15,7 @@ use std::ops::{
 use poise::serenity_prelude::ReactionType;
 use rand::prelude::*;
 
+#[derive(Clone)]
 pub struct Weapon {
 	pub name: String,
 	pub icon: ReactionType,
